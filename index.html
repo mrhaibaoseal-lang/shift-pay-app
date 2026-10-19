@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="打工薪水帳" />
+  <meta name="description" content="工讀生專用：排班紀錄、分鐘級加班費、全勤獎金、AI 手寫班表辨識匯入" />
+  <title>打工薪水帳｜排班紀錄與精準薪資計算</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <style>
+    :root { color-scheme: dark; --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px); }
+    html, body { background: #000; }
+    body {
+      color: #f5f5f7;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    .card { background: #1c1c1e; border-radius: 22px; }
+    .press { transition: transform .12s ease, opacity .12s ease, background-color .15s ease, box-shadow .15s ease; user-select: none; -webkit-user-select: none; }
+    .press:active { transform: scale(.94); opacity: .85; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { scrollbar-width: none; }
+
+    .tinput {
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px; padding: 10px 12px; font-size: 16px; color: #fff; outline: none;
+      transition: border-color .15s, background-color .15s; min-width: 0;
+    }
+    .tinput:focus { border-color: #0A84FF; background: rgba(10,132,255,.08); }
+    .tinput.tsmall { padding: 6px 6px; width: 100%; text-align: center; }
+    select.tinput { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, #888 50%), linear-gradient(135deg, #888 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 28px; }
+    select.tinput option { background: #2c2c2e; }
+
+    .glow { animation: glow 2s ease-in-out infinite; }
+    @keyframes glow {
+      0%,100% { box-shadow: 0 0 6px rgba(52,211,153,.30), inset 0 0 0 1px rgba(52,211,153,.5); }
+      50%     { box-shadow: 0 0 20px rgba(52,211,153,.70), inset 0 0 0 1px rgba(52,211,153,.9); }
+    }
+    @keyframes stampPop { 0% { transform: scale(1.25) rotate(-6deg); filter: brightness(1.7); } 60% { transform: scale(.94); } 100% { transform: scale(1); } }
+    .stamp-pop { animation: stampPop .38s ease-out; }
+    @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+    .bump { animation: bump .3s ease-out; }
+    .stamping [data-date] { outline: 1px dashed rgba(255,255,255,.22); outline-offset: -1px; }
+    .chip-on { background: #0A84FF !important; color: #fff !important; border-color: #0A84FF !important; }
+
+    /* Bottom sheets */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity .25s ease; z-index: 49; }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+    .sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; margin: 0 auto; max-width: 640px; max-height: 92vh; max-height: 92dvh;
+      background: #1c1c1e; border-radius: 26px 26px 0 0; display: flex; flex-direction: column; z-index: 50;
+      transform: translateY(105%); visibility: hidden;
+      transition: transform .34s cubic-bezier(.32,.72,0,1), visibility 0s linear .34s;
+      box-shadow: 0 -10px 40px rgba(0,0,0,.5);
+    }
+    .sheet.open { transform: translateY(0); visibility: visible; transition: transform .34s cubic-bezier(.32,.72,0,1); }
+    .sheet-handle { width: 40px; height: 5px; border-radius: 99px; background: rgba(255,255,255,.2); margin: 8px auto 10px; flex-shrink: 0; }
+    .sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: calc(24px + var(--safe-b)); flex: 1; }
+
+    .toast-wrap { position: fixed; left: 0; right: 0; top: calc(64px + var(--safe-t)); z-index: 200; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; padding: 0 16px; }
+    .toast { pointer-events: auto; max-width: 92vw; padding: 10px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; background: rgba(44,44,46,.96); border: 1px solid rgba(255,255,255,.1); box-shadow: 0 10px 30px rgba(0,0,0,.5); animation: toastIn .25s ease-out; }
+    .toast.out { opacity: 0; transform: translateY(-8px); transition: all .25s; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(-10px) scale(.96); } to { opacity: 1; transform: none; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    details > summary { list-style: none; cursor: pointer; }
+    details > summary::-webkit-details-marker { display: none; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ============ Header ============ -->
+  <header class="sticky top-0 z-30 bg-black/80 backdrop-blur-xl border-b border-white/5" style="padding-top: var(--safe-t)">
+    <div class="max-w-xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-blue-500 grid place-items-center shrink-0">
+          <i class="fa-solid fa-wallet text-white text-sm"></i>
+        </div>
+        <div class="font-bold truncate">打工薪水帳</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btnImport" class="press h-9 px-3.5 rounded-full bg-gradient-to-r from-fuchsia-500 to-indigo-500 text-sm font-bold shadow-lg shadow-fuchsia-500/30 whitespace-nowrap">📸 匯入班表</button>
+        <button id="btnSettings" class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center" aria-label="設定"><i class="fa-solid fa-gear"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-xl mx-auto px-4 pt-3 pb-36 space-y-4">
+
+    <!-- Month nav -->
+    <div class="flex items-center justify-between">
+      <button id="btnPrevMonth" class="press w-10 h-10 rounded-full bg-white/10 grid place-items-center" aria-label="上個月"><i class="fa-solid fa-chevron-left"></i></button>
+      <div class="flex items-center gap-2">
+        <div id="monthLabel" class="text-xl font-bold tabular-nums"></div>
+        <button id="btnToday" class="press text-xs px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 font-semibold">今天</button>
+      </div>
+      <button id="btnNextMonth" class="press w-10 h-10 rounded-full bg-white/10 grid place-items-center" aria-label="下個月"><i class="fa-solid fa-chevron-right"></i></button>
+    </div>
+
+    <!-- ============ Dashboard ============ -->
+    <section class="card p-5 relative overflow-hidden" style="background: linear-gradient(135deg, #1c1c1e 0%, #14233b 100%)">
+      <div class="absolute -right-12 -top-12 w-44 h-44 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none"></div>
+      <div class="absolute -left-10 -bottom-16 w-40 h-40 rounded-full bg-blue-500/10 blur-2xl pointer-events-none"></div>
+      <div class="relative">
+        <div class="text-sm text-white/60 flex items-center gap-2"><i class="fa-solid fa-sack-dollar text-emerald-400"></i><span id="dashLabel">本月預估總薪資</span></div>
+        <div id="dashTotal" class="text-5xl font-extrabold tracking-tight mt-1 tabular-nums">$0</div>
+        <div id="dashMeta" class="text-[11px] text-white/40 mt-1.5 leading-relaxed"></div>
+
+        <div class="grid grid-cols-3 gap-2 mt-4">
+          <div class="rounded-2xl bg-white/5 p-3 min-w-0">
+            <div class="text-[11px] text-white/50 whitespace-nowrap"><i class="fa-regular fa-clock text-blue-400"></i> 正常工時</div>
+            <div id="dNormalAmt" class="text-lg font-bold mt-1 tabular-nums truncate">$0</div>
+            <div id="dNormalHrs" class="text-[11px] text-white/50 leading-tight">共 0 小時</div>
+          </div>
+          <div class="rounded-2xl bg-white/5 p-3 min-w-0">
+            <div class="text-[11px] text-white/50 whitespace-nowrap"><i class="fa-solid fa-stopwatch text-amber-400"></i> 分鐘加班</div>
+            <div id="dOtAmt" class="text-lg font-bold mt-1 text-amber-300 tabular-nums truncate">$0</div>
+            <div id="dOtMin" class="text-[11px] text-white/50 leading-tight">累計加班 0 分鐘</div>
+          </div>
+          <div id="dBonusCard" class="rounded-2xl p-3 min-w-0"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Stamp bar ============ -->
+    <section>
+      <div class="flex items-center justify-between mb-2 px-1">
+        <div class="text-sm font-semibold text-white/80"><i class="fa-solid fa-stamp text-fuchsia-400"></i> 極速排班印章</div>
+        <div class="text-[11px] text-white/40">選印章 → 點日期蓋章</div>
+      </div>
+      <div id="stampBar" class="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4"></div>
+    </section>
+
+    <!-- ============ Calendar ============ -->
+    <section class="card p-2.5">
+      <div class="grid grid-cols-7 text-center text-[11px] text-white/40 mb-1.5 mt-1">
+        <div class="text-rose-400/80">日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div class="text-rose-400/80">六</div>
+      </div>
+      <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-white/40 mt-3 px-1 pb-1">
+        <span><span class="px-1 rounded bg-amber-400 text-black font-bold">+15m</span> 加班</span>
+        <span><i class="fa-solid fa-right-left text-sky-400"></i> 調班/代班</span>
+        <span><i class="fa-solid fa-circle-exclamation text-rose-400"></i> 請假/遲到</span>
+      </div>
+    </section>
+
+    <button id="btnSummary" class="press w-full py-4 rounded-2xl bg-white text-black font-bold text-base shadow-lg flex items-center justify-center gap-2">
+      <i class="fa-solid fa-file-invoice-dollar"></i> 產生月底對帳單
+    </button>
+
+    <p class="text-center text-[11px] text-white/30 leading-relaxed">
+      <i class="fa-solid fa-lock"></i> 所有資料僅儲存在這台裝置的瀏覽器（localStorage）<br />可於「設定」匯出備份檔
+    </p>
+  </main>
+
+  <!-- ============ Stamp mode bottom bar ============ -->
+  <div id="stampModeBar" class="fixed left-0 right-0 bottom-0 z-30 px-4 pt-3 transition-transform duration-300" style="transform: translateY(120%); padding-bottom: calc(12px + var(--safe-b));">
+    <div class="max-w-xl mx-auto flex items-center gap-3 rounded-2xl p-3 shadow-2xl border border-white/10 bg-[#2c2c2e]/95 backdrop-blur-xl">
+      <div id="smIcon" class="w-11 h-11 rounded-xl grid place-items-center shrink-0 text-white text-lg"></div>
+      <div class="flex-1 min-w-0">
+        <div id="smTitle" class="font-semibold text-sm truncate"></div>
+        <div id="smSub" class="text-xs text-white/50 truncate"></div>
+      </div>
+      <button id="smDone" class="press px-4 py-2.5 rounded-xl bg-white text-black text-sm font-bold shrink-0">完成</button>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay"></div>
+  <div id="toastWrap" class="toast-wrap"></div>
+
+  <!-- ============ Day detail sheet ============ -->
+  <section id="daySheet" class="sheet" aria-label="當日班表設定">
+    <div class="sheet-handle"></div>
+    <div class="flex items-center justify-between px-5 pb-3 gap-2">
+      <button data-act="day-prev" class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center shrink-0" aria-label="前一天"><i class="fa-solid fa-chevron-left"></i></button>
+      <div class="text-center min-w-0">
+        <div id="dayTitle" class="font-bold text-lg"></div>
+        <div id="daySub" class="text-xs text-white/50">當日班表詳細設定</div>
+      </div>
+      <div class="flex gap-2 shrink-0">
+        <button data-act="day-next" class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center" aria-label="後一天"><i class="fa-solid fa-chevron-right"></i></button>
+        <button data-close class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center" aria-label="關閉"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div id="dayBody" class="sheet-body px-5"></div>
+  </section>
+
+  <!-- ============ Stamp manager sheet ============ -->
+  <section id="stampSheet" class="sheet" aria-label="管理常用班別">
+    <div class="sheet-handle"></div>
+    <div class="flex items-center justify-between px-5 pb-3">
+      <div class="text-lg font-bold"><i class="fa-solid fa-stamp text-fuchsia-400"></i> 管理常用班別印章</div>
+      <button data-close class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center" aria-label="關閉"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sheet-body px-5 space-y-4">
+      <div class="rounded-2xl bg-white/5 p-4 space-y-3">
+        <div id="sfTitle" class="font-semibold text-sm text-white/80">➕ 新增班別</div>
+        <input id="sfName" class="tinput w-full" maxlength="8" placeholder="班別名稱（例如：早班、大夜）" />
+        <div class="flex items-center gap-2">
+          <input id="sfStart" type="time" class="tinput flex-1" value="09:00" />
+          <i class="fa-solid fa-arrow-right text-white/40"></i>
+          <input id="sfEnd" type="time" class="tinput flex-1" value="17:00" />
+        </div>
+        <div>
+          <div class="text-xs text-white/50 mb-1.5">扣除無薪休息時間</div>
+          <div id="sfBreakChips" class="grid grid-cols-4 gap-2">
+            <button data-brk="0" class="press py-2 rounded-xl text-sm bg-white/5 border border-white/10">不扣</button>
+            <button data-brk="30" class="press py-2 rounded-xl text-sm bg-white/5 border border-white/10">0.5 小時</button>
+            <button data-brk="60" class="press py-2 rounded-xl text-sm bg-white/5 border border-white/10">1 小時</button>
+            <button data-brk="90" class="press py-2 rounded-xl text-sm bg-white/5 border border-white/10">1.5 小時</button>
+          </div>
+          <div class="flex items-center gap-2 mt-2">
+            <span class="text-xs text-white/50">自訂</span>
+            <input id="sfBreak" type="number" inputmode="numeric" min="0" class="tinput flex-1 text-center" value="0" />
+            <span class="text-xs text-white/50">分鐘</span>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-white/50 mb-1.5">印章顏色</div>
+          <div id="sfColors" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div class="flex gap-2">
+          <button id="sfCancel" class="press hidden flex-1 py-3 rounded-xl bg-white/10 font-semibold">取消編輯</button>
+          <button id="sfSave" class="press flex-[2] py-3 rounded-xl bg-blue-500 font-bold">新增班別</button>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs text-white/50 mb-2 px-1">我的班別（點筆可編輯）</div>
+        <div id="stampList" class="rounded-2xl bg-white/5 divide-y divide-white/5"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Settings sheet ============ -->
+  <section id="settingsSheet" class="sheet" aria-label="設定">
+    <div class="sheet-handle"></div>
+    <div class="flex items-center justify-between px-5 pb-3">
+      <div class="text-lg font-bold"><i class="fa-solid fa-gear"></i> 設定</div>
+      <button data-close class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center" aria-label="關閉"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sheet-body px-5 space-y-6">
+      <!-- Pay -->
+      <div>
+        <div class="text-[13px] font-semibold text-white/50 mb-2 px-1">💰 薪資參數</div>
+        <div class="rounded-2xl bg-white/5 divide-y divide-white/5">
+          <div class="flex items-center justify-between p-4">
+            <label for="setWage" class="font-medium">基本時薪</label>
+            <div class="flex items-center gap-1.5"><span class="text-white/50">$</span><input id="setWage" type="number" inputmode="decimal" min="0" class="tinput w-28 text-right" /><span class="text-white/50 text-sm">/ 小時</span></div>
+          </div>
+          <div class="p-4">
+            <div class="font-medium">加班倍率</div>
+            <div class="text-xs text-white/40 mt-0.5">加班費 = 加班分鐘 × (時薪 ÷ 60) × 倍率</div>
+            <div id="multChips" class="grid grid-cols-4 gap-2 mt-3">
+              <button data-mult="1" class="press py-2 rounded-xl text-sm bg-white/5 border border-white/10 leading-tight">×1.0<div class="text-[10px] opacity-70">同時薪</div></button>
+              <button data-mult="1.34" class="press py-2 rounded-xl text-sm bg-white/5 border border-white/10 leading-tight">×1.34<div class="text-[10px] opacity-70">勞基法</div></button>
+              <button data-mult="1.67" class="press py-2 rounded-xl text-sm bg-white/5 border border-white/10 leading-tight">×1.67<div class="text-[10px] opacity-70">勞基法</div></button>
+              <button data-mult="2" class="press py-2 rounded-xl text-sm bg-white/5 border border-white/10 leading-tight">×2.0<div class="text-[10px] opacity-70">加倍</div></button>
+            </div>
+            <div class="flex items-center gap-2 mt-3">
+              <span class="text-sm text-white/50 shrink-0">自訂倍率 ×</span>
+              <input id="setMult" type="number" step="0.01" min="0" inputmode="decimal" class="tinput flex-1" />
+            </div>
+          </div>
+          <div class="p-4">
+            <div class="font-medium">小數點進位機制（加班費）</div>
+            <div class="grid grid-cols-2 gap-2 mt-3 p-1 rounded-xl bg-black/30">
+              <button data-round="monthly" class="press py-2.5 rounded-lg text-sm font-semibold">整月加總後<br />再四捨五入</button>
+              <button data-round="daily" class="press py-2.5 rounded-lg text-sm font-semibold">單日各自<br />四捨五入</button>
+            </div>
+            <div id="roundHint" class="text-xs text-white/40 mt-2"></div>
+          </div>
+          <div class="flex items-center justify-between p-4">
+            <div><div class="font-medium">全勤獎金</div><div class="text-xs text-white/40">當月無「請假/遲到」即可領取</div></div>
+            <div class="flex items-center gap-1.5"><span class="text-white/50">$</span><input id="setBonus" type="number" inputmode="numeric" min="0" class="tinput w-28 text-right" /></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI -->
+      <div>
+        <div class="text-[13px] font-semibold text-white/50 mb-2 px-1">🤖 AI 手寫班表辨識</div>
+        <div class="rounded-2xl bg-white/5 divide-y divide-white/5">
+          <div class="p-4">
+            <label for="setName" class="font-medium">我的班表姓名 / 暱稱</label>
+            <div class="text-xs text-white/40 mt-0.5">AI 會在手寫班表的眾多名字中鎖定這個名字</div>
+            <input id="setName" class="tinput w-full mt-2" placeholder="例如：王凱弘" />
+          </div>
+          <div class="p-4">
+            <label for="setKey" class="font-medium">Gemini API Key</label>
+            <div class="text-xs text-white/40 mt-0.5">只會儲存在這台裝置。可到 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="text-blue-400 underline">Google AI Studio</a> 免費申請</div>
+            <div class="flex gap-2 mt-2">
+              <input id="setKey" type="password" autocomplete="off" spellcheck="false" class="tinput flex-1 font-mono" placeholder="AIza..." />
+              <button id="btnToggleKey" class="press w-12 rounded-xl bg-white/10" aria-label="顯示/隱藏"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="p-4">
+            <label for="setHints" class="font-medium">手寫代號對照提示 <span class="text-xs text-white/40">（選填）</span></label>
+            <div class="text-xs text-white/40 mt-0.5">會一併加入給 AI 的指令中，幫助辨識店裡的簡寫</div>
+            <textarea id="setHints" rows="3" class="tinput w-full mt-2 text-sm" placeholder="例如：寫「早」代表 09:00-17:00，寫「晚」代表 18:00-22:00，畫「/」或「休」代表休假"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Data -->
+      <div>
+        <div class="text-[13px] font-semibold text-white/50 mb-2 px-1">💾 資料管理</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btnExport" class="press py-3 rounded-xl bg-white/5 text-sm font-semibold"><i class="fa-solid fa-download text-blue-400"></i> 匯出備份</button>
+          <label class="press py-3 rounded-xl bg-white/5 text-sm font-semibold text-center cursor-pointer"><i class="fa-solid fa-upload text-emerald-400"></i> 匯入備份<input id="fileBackup" type="file" accept="application/json,.json" class="hidden" /></label>
+          <button id="btnClearMonth" class="press py-3 rounded-xl bg-amber-500/10 text-amber-300 text-sm font-semibold"><i class="fa-solid fa-broom"></i> 清除本月班表</button>
+          <button id="btnResetAll" class="press py-3 rounded-xl bg-rose-500/10 text-rose-400 text-sm font-semibold"><i class="fa-solid fa-trash"></i> 重置全部資料</button>
+        </div>
+      </div>
+
+      <div class="sticky bottom-0 pt-2 pb-1 bg-[#1c1c1e]">
+        <button id="btnSaveSettings" class="press w-full py-4 rounded-2xl bg-blue-500 font-bold text-base">儲存設定</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Import sheet ============ -->
+  <section id="importSheet" class="sheet" aria-label="AI 智慧辨識匯入班表">
+    <div class="sheet-handle"></div>
+    <div class="flex items-center justify-between px-5 pb-3 gap-2">
+      <div class="min-w-0">
+        <div class="text-lg font-bold">📸 AI 智慧辨識匯入班表</div>
+        <div class="text-xs text-white/50">主管手寫班表照片 → 自動轉成你的排班</div>
+      </div>
+      <button data-close class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center shrink-0" aria-label="關閉"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sheet-body px-5 space-y-4">
+      <div class="rounded-2xl bg-white/5 p-3 space-y-2">
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-white/70 shrink-0"><i class="fa-regular fa-calendar text-indigo-300"></i> 班表月份</span>
+          <select id="impYear" class="tinput flex-1 py-2"></select>
+          <select id="impMonth" class="tinput flex-1 py-2"></select>
+        </div>
+        <div class="text-xs text-white/50">辨識對象：<b id="impNameLabel" class="text-white"></b>　<button id="impEditName" class="text-blue-400 underline">修改</button></div>
+      </div>
+
+      <div class="grid grid-cols-2 p-1 rounded-xl bg-white/5">
+        <button data-imptab="photo" class="press py-2.5 rounded-lg text-sm font-semibold">📷 照片 AI 辨識</button>
+        <button data-imptab="json" class="press py-2.5 rounded-lg text-sm font-semibold">📋 貼上 JSON</button>
+      </div>
+
+      <!-- Mode 1: photo -->
+      <div id="panePhoto" class="space-y-3">
+        <div id="impKeyWarn" class="hidden rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-amber-200">
+          <i class="fa-solid fa-key"></i> 尚未設定 Gemini API Key。<button id="impGoSettings" class="underline font-bold">前往設定</button>，或改用「貼上 JSON」模式（免 Key）。
+        </div>
+        <div class="rounded-2xl border-2 border-dashed border-white/15 p-4 text-center">
+          <div id="impEmpty" class="py-3">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-fuchsia-500/30 to-indigo-500/30 grid place-items-center text-2xl">📸</div>
+            <div class="mt-3 text-sm text-white/70">拍下或選擇主管的手寫班表照片</div>
+            <div class="text-xs text-white/40 mt-1">建議：光線充足、正面拍攝、整張表格入鏡</div>
+            <div class="grid grid-cols-2 gap-2 mt-4">
+              <label class="press py-3 rounded-xl bg-white/10 text-sm font-semibold cursor-pointer"><i class="fa-solid fa-camera"></i> 直接拍照<input id="fileCamera" type="file" accept="image/*" capture="environment" class="hidden" /></label>
+              <label class="press py-3 rounded-xl bg-white/10 text-sm font-semibold cursor-pointer"><i class="fa-regular fa-images"></i> 從相簿選取<input id="fileGallery" type="file" accept="image/*" class="hidden" /></label>
+            </div>
+          </div>
+          <div id="impPreviewWrap" class="hidden">
+            <img id="impPreview" alt="班表預覽" class="max-h-72 mx-auto rounded-xl" />
+            <div id="impImgInfo" class="text-[11px] text-white/40 mt-2"></div>
+            <label class="press inline-block mt-2 px-4 py-2 rounded-xl bg-white/10 text-sm font-semibold cursor-pointer"><i class="fa-solid fa-rotate"></i> 重新選擇<input id="fileReselect" type="file" accept="image/*" class="hidden" /></label>
+          </div>
+        </div>
+        <button id="btnRecognize" class="press w-full py-4 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-indigo-500 font-bold text-base disabled:opacity-40 disabled:pointer-events-none" disabled>
+          <i class="fa-solid fa-wand-magic-sparkles"></i> 開始辨識
+        </button>
+        <div id="impStatus" class="text-sm"></div>
+      </div>
+
+      <!-- Mode 2: JSON -->
+      <div id="paneJson" class="space-y-3 hidden">
+        <div class="rounded-2xl bg-white/5 p-4 text-sm text-white/70 space-y-1.5">
+          <div class="font-semibold text-white">免 API Key 備用方案</div>
+          <div>① 點下方按鈕複製專用 Prompt</div>
+          <div>② 打開 ChatGPT / Gemini / Claude 等聊天 AI，貼上 Prompt 並附上班表照片</div>
+          <div>③ 把 AI 回覆的 JSON 貼到下面文字框，按「解析 JSON」</div>
+        </div>
+        <button id="btnCopyPrompt" class="press w-full py-3.5 rounded-2xl bg-indigo-500 font-bold"><i class="fa-regular fa-copy"></i> 一鍵複製專用 Prompt</button>
+        <details class="rounded-xl bg-white/5">
+          <summary class="p-3 text-xs text-white/50"><i class="fa-solid fa-chevron-down"></i> 查看 Prompt 內容</summary>
+          <pre id="promptPreview" class="px-3 pb-3 text-[11px] text-white/60 whitespace-pre-wrap break-words font-mono"></pre>
+        </details>
+        <textarea id="impJson" rows="6" class="tinput w-full font-mono text-sm" placeholder='[{"date":"2026-10-01","startTime":"18:00","endTime":"22:00","note":"18-22"}]'></textarea>
+        <button id="btnParseJson" class="press w-full py-3.5 rounded-2xl bg-white/10 font-bold"><i class="fa-solid fa-code"></i> 解析 JSON</button>
+      </div>
+
+      <!-- Preview & verify -->
+      <div id="impResults" class="hidden space-y-3">
+        <div class="flex items-center justify-between pt-2">
+          <div class="font-bold">🔍 辨識結果核對清單 <span id="impCount" class="text-sm text-white/50 font-normal"></span></div>
+          <label class="flex items-center gap-2 text-sm text-white/70"><input id="impAll" type="checkbox" class="w-5 h-5 accent-emerald-500" /> 全選</label>
+        </div>
+        <div class="text-xs text-amber-200/90 bg-amber-500/10 rounded-xl p-3 leading-relaxed">
+          <i class="fa-solid fa-circle-info"></i> 手寫字跡可能有辨識誤差（例如 1 看成 7）。請逐列對照照片：時間可直接點擊修改，辨識錯誤的日期請取消勾選。
+        </div>
+        <div class="flex items-center gap-2 text-sm">
+          <span class="text-white/60 flex-1">未對應到印章的班別，無薪休息扣除</span>
+          <select id="impBreak" class="tinput py-1.5 text-sm">
+            <option value="0">不扣</option>
+            <option value="30">0.5 小時</option>
+            <option value="60">1 小時</option>
+          </select>
+        </div>
+        <div id="impList" class="space-y-2"></div>
+        <div class="sticky bottom-0 pt-2 pb-1 bg-[#1c1c1e]">
+          <button id="btnImportConfirm" class="press w-full py-4 rounded-2xl bg-emerald-500 font-bold text-black text-base disabled:opacity-40 disabled:pointer-events-none">✅ 確認無誤，一鍵寫入本月班表</button>
+          <button id="btnImpClear" class="w-full mt-1 text-sm text-white/40 py-2">清除辨識結果</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Summary sheet ============ -->
+  <section id="summarySheet" class="sheet" aria-label="月底對帳單">
+    <div class="sheet-handle"></div>
+    <div class="flex items-center justify-between px-5 pb-3">
+      <div class="text-lg font-bold"><i class="fa-solid fa-file-invoice-dollar"></i> 月底對帳單</div>
+      <button data-close class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center" aria-label="關閉"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="sheet-body px-4 space-y-3">
+      <div id="summaryBody"></div>
+      <div class="grid grid-cols-2 gap-2">
+        <button id="btnCopySummary" class="press py-3.5 rounded-2xl bg-white/10 font-semibold"><i class="fa-regular fa-copy"></i> 複製文字版</button>
+        <button data-close class="press py-3.5 rounded-2xl bg-blue-500 font-semibold">關閉</button>
+      </div>
+      <div class="text-center text-[11px] text-white/30">💡 可直接截圖上方對帳單傳給店長或會計核對</div>
+    </div>
+  </section>
+
+<script>
+'use strict';
+/* =========================================================
+ *  常數 & 狀態
+ * ========================================================= */
+const LS_KEY = 'shiftpay.v1';
+const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+const PALETTE = ['#0A84FF', '#BF5AF2', '#FF9F0A', '#30D158', '#FF453A', '#FF375F', '#64D2FF', '#FFD60A', '#AC8E68', '#8E8E93'];
+const GEMINI_MODEL = 'gemini-2.5-flash';
+
+const DEFAULT_STATE = () => ({
+  settings: {
+    hourlyWage: 200,
+    otMultiplier: 1,
+    roundingMode: 'monthly',   // 'monthly' | 'daily'
+    attendanceBonus: 500,
+    myName: '王凱弘',
+    apiKey: '',
+    codeHints: ''
+  },
+  stamps: [
+    { id: 's1', name: '早班',   start: '09:00', end: '17:00', breakMin: 0,  color: '#0A84FF' },
+    { id: 's2', name: '晚班',   start: '18:00', end: '22:00', breakMin: 0,  color: '#BF5AF2' },
+    { id: 's3', name: '假日班', start: '10:00', end: '19:00', breakMin: 60, color: '#FF9F0A' }
+  ],
+  shifts: {} // 'YYYY-MM-DD': { name,color,start,end,breakMin,stampId,otMin,status,leaveType,note }
+});
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return DEFAULT_STATE();
+    const s = JSON.parse(raw);
+    const d = DEFAULT_STATE();
+    return {
+      settings: { ...d.settings, ...(s.settings || {}) },
+      stamps: Array.isArray(s.stamps) ? s.stamps : d.stamps,
+      shifts: (s.shifts && typeof s.shifts === 'object') ? s.shifts : {}
+    };
+  } catch (e) {
+    console.error(e);
+    return DEFAULT_STATE();
+  }
+}
+let state = loadState();
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  catch (e) { toast('⚠️ 儲存失敗：瀏覽器空間不足或停用 localStorage', 'error'); }
+}
+
+const today = new Date();
+let viewY = today.getFullYear();
+let viewM = today.getMonth() + 1;
+let activeStampId = null;   // stamp id | 'clear' | null
+let editingDate = null;
+
+/* =========================================================
+ *  工具函式
+ * ========================================================= */
+const $ = (s, root = document) => root.querySelector(s);
+const $$ = (s, root = document) => Array.from(root.querySelectorAll(s));
+const pad = n => String(n).padStart(2, '0');
+const dkey = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+const ymPrefix = (y, m) => `${y}-${pad(m)}`;
+const todayKey = dkey(today.getFullYear(), today.getMonth() + 1, today.getDate());
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function hexA(hex, a) {
+  let h = String(hex || '#8E8E93').replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  const n = parseInt(h, 16) || 0;
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+function toMin(t) {
+  if (!t) return 0;
+  const [h, m] = String(t).split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+function spanMin(start, end) {
+  const a = toMin(start); let b = toMin(end);
+  if (b <= a) b += 1440; // 跨夜
+  return b - a;
+}
+function isOvernight(start, end) { return toMin(end) <= toMin(start); }
+function isUnpaid(sh) { return sh.status === 'leave' && sh.leaveType === 'leave'; }
+function normalMinOf(sh) {
+  if (isUnpaid(sh)) return 0;
+  return Math.max(0, spanMin(sh.start, sh.end) - (Number(sh.breakMin) || 0));
+}
+function otMinOf(sh) {
+  if (isUnpaid(sh)) return 0;
+  return Math.max(0, Math.floor(Number(sh.otMin) || 0));
+}
+function wage() { return Number(state.settings.hourlyWage) || 0; }
+function mult() { const v = Number(state.settings.otMultiplier); return isFinite(v) && v >= 0 ? v : 1; }
+function fmtNum(n, dec = 0) {
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function money(n, dec = 0) { return '$' + fmtNum(n, dec); }
+function moneySmart(n) {
+  const v = Math.round(n * 10) / 10;
+  return Number.isInteger(v) ? money(v) : money(v, 1);
+}
+function fmtHours(min) {
+  const h = min / 60;
+  if (Number.isInteger(h)) return String(h);
+  return h.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+}
+function weekdayOf(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d).getDay();
+}
+function shortTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':');
+  return m === '00' ? String(Number(h)) : `${Number(h)}:${m}`;
+}
+function isValidDate(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key || '')) return false;
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
+function vib(ms = 12) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+function bumpEl(el) { if (!el) return; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+
+function toast(msg, type = 'info', ms = 2400) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  if (type === 'error') t.style.borderColor = 'rgba(255,69,58,.5)';
+  if (type === 'success') t.style.borderColor = 'rgba(48,209,88,.5)';
+  if (type === 'warn') t.style.borderColor = 'rgba(255,159,10,.6)';
+  t.textContent = msg;
+  $('#toastWrap').appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) {}
+    ta.remove();
+    return ok;
+  }
+}
+
+function animateNumber(el, to) {
+  const from = Number(el.dataset.val || 0);
+  el.dataset.val = to;
+  if (from === to) { el.textContent = money(to); return; }
+  const t0 = performance.now(), dur = 450;
+  const step = t => {
+    const p = Math.min(1, (t - t0) / dur);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = money(Math.round(from + (to - from) * e));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* =========================================================
+ *  核心計薪
+ * ========================================================= */
+function computeMonth(y, m) {
+  const pre = ymPrefix(y, m) + '-';
+  const r = wage() / 60, k = mult(), daily = state.settings.roundingMode === 'daily';
+  const days = Object.keys(state.shifts).filter(key => key.startsWith(pre)).sort();
+  let nMin = 0, oMin = 0, otDailySum = 0, leaveCount = 0;
+  const rows = [];
+  for (const key of days) {
+    const sh = state.shifts[key];
+    const nm = normalMinOf(sh), om = otMinOf(sh);
+    nMin += nm; oMin += om;
+    const otRaw = om * r * k;
+    const otRounded = Math.round(otRaw);
+    otDailySum += otRounded;
+    if (sh.status === 'leave') leaveCount++;
+    rows.push({ key, sh, nm, om, normalPay: nm * r, otPay: daily ? otRounded : otRaw });
+  }
+  const normalPay = Math.round(nMin * r);
+  const otPay = daily ? otDailySum : Math.round(oMin * r * k);
+  const hasShift = days.length > 0;
+  const bonusOk = hasShift && leaveCount === 0;
+  const bonus = bonusOk ? (Number(state.settings.attendanceBonus) || 0) : 0;
+  return { days, rows, nMin, oMin, normalPay, otPay, bonus, bonusOk, hasShift, leaveCount, total: normalPay + otPay + bonus };
+}
+
+/* =========================================================
+ *  Bottom sheet 管理
+ * ========================================================= */
+const sheetStack = [];
+const overlay = $('#overlay');
+function openSheet(id) {
+  const el = document.getElementById(id);
+  if (sheetStack.includes(id)) return;
+  sheetStack.push(id);
+  el.style.zIndex = 50 + sheetStack.length * 2;
+  overlay.style.zIndex = 49 + sheetStack.length * 2;
+  overlay.classList.add('open');
+  requestAnimationFrame(() => el.classList.add('open'));
+  document.body.style.overflow = 'hidden';
+}
+function closeSheet(id) {
+  id = id || sheetStack[sheetStack.length - 1];
+  const i = sheetStack.indexOf(id);
+  if (i < 0) return;
+  sheetStack.splice(i, 1);
+  document.getElementById(id).classList.remove('open');
+  if (sheetStack.length) overlay.style.zIndex = 49 + sheetStack.length * 2;
+  else { overlay.classList.remove('open'); document.body.style.overflow = ''; }
+  if (id === 'daySheet') editingDate = null;
+}
+overlay.addEventListener('click', () => closeSheet());
+document.addEventListener('click', e => {
+  const c = e.target.closest('[data-close]');
+  if (c) { const sh = c.closest('.sheet'); if (sh) closeSheet(sh.id); }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (sheetStack.length) closeSheet(); else if (activeStampId) setActiveStamp(null); }
+});
+
+/* =========================================================
+ *  Dashboard
+ * ========================================================= */
+function renderDashboard() {
+  const c = computeMonth(viewY, viewM), s = state.settings;
+  $('#monthLabel').textContent = `${viewY} 年 ${viewM} 月`;
+  $('#dashLabel').textContent = `${viewM} 月預估總薪資`;
+  animateNumber($('#dashTotal'), c.total);
+  $('#dashMeta').textContent = `時薪 $${wage()} · 加班 ×${mult()} · ${s.roundingMode === 'daily' ? '單日各自四捨五入' : '整月加總後四捨五入'} · 已排 ${c.days.length} 天`;
+  $('#dNormalAmt').textContent = money(c.normalPay);
+  $('#dNormalHrs').textContent = `共 ${fmtHours(c.nMin)} 小時`;
+  $('#dOtAmt').textContent = money(c.otPay);
+  $('#dOtMin').textContent = `累計加班 ${c.oMin} 分鐘`;
+
+  const card = $('#dBonusCard');
+  const amt = Number(s.attendanceBonus) || 0;
+  if (!c.hasShift) {
+    card.className = 'rounded-2xl p-3 min-w-0 bg-white/5';
+    card.innerHTML = `<div class="text-[11px] text-white/50 whitespace-nowrap"><i class="fa-solid fa-medal text-white/40"></i> 全勤獎金</div>
+      <div class="text-lg font-bold mt-1 text-white/40">$0</div>
+      <div class="text-[10.5px] text-white/40 leading-tight">⏳ 尚未排班</div>`;
+  } else if (c.bonusOk) {
+    card.className = 'rounded-2xl p-3 min-w-0 bg-emerald-500/15 glow';
+    card.innerHTML = `<div class="text-[11px] text-emerald-300 whitespace-nowrap"><i class="fa-solid fa-medal"></i> 全勤獎金</div>
+      <div class="text-lg font-bold mt-1 text-emerald-400 tabular-nums">${money(amt)}</div>
+      <div class="text-[10.5px] text-emerald-300 font-semibold leading-tight">🔥 全勤 ${money(amt)} 達成中</div>`;
+  } else {
+    card.className = 'rounded-2xl p-3 min-w-0 bg-white/5';
+    card.innerHTML = `<div class="text-[11px] text-white/50 whitespace-nowrap"><i class="fa-solid fa-medal text-white/30"></i> 全勤獎金</div>
+      <div class="text-lg font-bold mt-1 text-white/35 line-through">${money(amt)}</div>
+      <div class="text-[10.5px] text-white/45 leading-tight">❌ 全勤已取消 ($0)<br><span class="text-rose-400/80">請假/遲到 ${c.leaveCount} 天</span></div>`;
+  }
+}
+
+/* =========================================================
+ *  印章列
+ * ========================================================= */
+function renderStamps() {
+  const bar = $('#stampBar');
+  const items = state.stamps.map(st => {
+    const on = activeStampId === st.id;
+    const style = on
+      ? `background:${hexA(st.color, .32)};border-color:${st.color};box-shadow:0 0 0 3px ${hexA(st.color, .25)}`
+      : `background:${hexA(st.color, .14)};border-color:transparent`;
+    return `<button data-stamp="${st.id}" class="press shrink-0 rounded-2xl px-3 py-2 text-left border-2" style="${style}">
+      <div class="flex items-center gap-1.5 text-sm font-bold whitespace-nowrap" style="color:${st.color}">
+        <i class="fa-solid ${on ? 'fa-stamp' : 'fa-circle'} ${on ? 'text-xs' : 'text-[8px]'}"></i>${esc(st.name)}
+      </div>
+      <div class="text-[11px] text-white/70 mt-0.5 whitespace-nowrap tabular-nums">${st.start}-${st.end}${st.breakMin ? ` · 扣休${fmtHours(st.breakMin)}h` : ''}</div>
+    </button>`;
+  }).join('');
+  const clearOn = activeStampId === 'clear';
+  bar.innerHTML = items + `
+    <button data-stamp="clear" class="press shrink-0 rounded-2xl px-3 py-2 text-left border-2 ${clearOn ? 'border-rose-500 bg-rose-500/25' : 'border-transparent bg-white/5'}">
+      <div class="text-sm font-bold whitespace-nowrap text-rose-400"><i class="fa-solid fa-eraser text-xs"></i> 清除班表</div>
+      <div class="text-[11px] text-white/50 mt-0.5 whitespace-nowrap">點日期即清除</div>
+    </button>
+    <button id="btnManageStamps" class="press shrink-0 rounded-2xl px-3 py-2 border-2 border-dashed border-white/15 text-white/60">
+      <div class="text-sm font-semibold whitespace-nowrap"><i class="fa-solid fa-plus text-xs"></i> 新增/編輯</div>
+      <div class="text-[11px] text-white/40 mt-0.5 whitespace-nowrap">管理常用班別</div>
+    </button>`;
+}
+function setActiveStamp(id) {
+  activeStampId = (activeStampId === id) ? null : id;
+  if (activeStampId) vib(8);
+  renderStamps(); renderStampModeBar(); renderCalendar();
+}
+$('#stampBar').addEventListener('click', e => {
+  if (e.target.closest('#btnManageStamps')) { openStampManager(); return; }
+  const b = e.target.closest('[data-stamp]');
+  if (b) setActiveStamp(b.dataset.stamp);
+});
+function renderStampModeBar() {
+  const bar = $('#stampModeBar');
+  if (!activeStampId) { bar.style.transform = 'translateY(120%)'; return; }
+  bar.style.transform = 'translateY(0)';
+  const icon = $('#smIcon');
+  if (activeStampId === 'clear') {
+    icon.style.background = '#FF453A';
+    icon.innerHTML = '<i class="fa-solid fa-eraser"></i>';
+    $('#smTitle').textContent = '清除模式';
+    $('#smSub').textContent = '點選月曆日期即可清除該日班表';
+  } else {
+    const st = state.stamps.find(s => s.id === activeStampId);
+    if (!st) { activeStampId = null; renderStampModeBar(); return; }
+    icon.style.background = st.color;
+    icon.innerHTML = '<i class="fa-solid fa-stamp"></i>';
+    $('#smTitle').textContent = `印章模式：${st.name}（${st.start}-${st.end}）`;
+    $('#smSub').textContent = '點選月曆日期即可一鍵蓋章';
+  }
+}
+$('#smDone').addEventListener('click', () => { activeStampId = null; renderStamps(); renderStampModeBar(); renderCalendar(); });
+
+function applyStamp(key, id) {
+  if (id === 'clear') {
+    if (!state.shifts[key]) return;
+    delete state.shifts[key];
+  } else {
+    const st = state.stamps.find(s => s.id === id);
+    if (!st) return;
+    const prev = state.shifts[key] || {};
+    state.shifts[key] = {
+      name: st.name, color: st.color, start: st.start, end: st.end, breakMin: Number(st.breakMin) || 0, stampId: st.id,
+      otMin: prev.otMin || 0, status: prev.status || 'normal', leaveType: prev.leaveType || 'late', note: prev.note || ''
+    };
+  }
+  vib(15);
+  save();
+  renderDashboard();
+  renderCalendar();
+  const cell = $(`[data-date="${key}"]`);
+  if (cell) { cell.classList.remove('stamp-pop'); void cell.offsetWidth; cell.classList.add('stamp-pop'); }
+}
+
+/* =========================================================
+ *  月曆
+ * ========================================================= */
+function renderCalendar() {
+  const grid = $('#calGrid');
+  grid.classList.toggle('stamping', !!activeStampId);
+  const first = new Date(viewY, viewM - 1, 1).getDay();
+  const dim = new Date(viewY, viewM, 0).getDate();
+  let html = '';
+  for (let i = 0; i < first; i++) html += '<div></div>';
+  for (let d = 1; d <= dim; d++) {
+    const key = dkey(viewY, viewM, d);
+    const sh = state.shifts[key];
+    const wd = (first + d - 1) % 7;
+    const isToday = key === todayKey;
+    const weekend = wd === 0 || wd === 6;
+    let statusIcon = '';
+    if (sh && sh.status === 'leave') statusIcon = '<i class="fa-solid fa-circle-exclamation text-rose-400 text-[10px]"></i>';
+    else if (sh && sh.status === 'swap') statusIcon = '<i class="fa-solid fa-right-left text-sky-400 text-[10px]"></i>';
+    const om = sh ? otMinOf(sh) : 0;
+    const unpaid = sh && isUnpaid(sh);
+    const numCls = isToday
+      ? 'bg-blue-500 text-white rounded-full w-5 h-5 grid place-items-center text-[12px]'
+      : (weekend ? 'text-rose-400' : 'text-white/90');
+    html += `<button data-date="${key}" class="press relative h-[84px] rounded-xl p-1 flex flex-col text-left overflow-hidden ${isToday ? 'ring-1 ring-blue-500/70' : ''}"
+        style="background:${sh ? hexA(sh.color, .14) : '#26262a'}">
+      <div class="flex items-center justify-between w-full">
+        <span class="text-[13px] font-semibold leading-none ${numCls}">${d}</span>${statusIcon}
+      </div>
+      ${sh ? `
+        <div class="mt-1 w-full rounded-md px-1 py-[2px] text-[10px] font-bold text-white truncate leading-tight ${unpaid ? 'line-through opacity-60' : ''}" style="background:${sh.color}">${esc(sh.name || '班')}</div>
+        <div class="text-[9.5px] text-white/65 mt-0.5 leading-tight truncate w-full tabular-nums">${shortTime(sh.start)}-${shortTime(sh.end)}</div>
+        ${om > 0 ? `<div class="mt-auto"><span class="inline-block text-[9px] font-extrabold px-1 rounded bg-amber-400 text-black leading-[14px]">+${om}m</span></div>` : ''}
+      ` : ''}
+    </button>`;
+  }
+  grid.innerHTML = html;
+}
+$('#calGrid').addEventListener('click', e => {
+  const b = e.target.closest('[data-date]');
+  if (!b) return;
+  const key = b.dataset.date;
+  if (activeStampId) applyStamp(key, activeStampId);
+  else openDay(key);
+});
+
+function changeMonth(delta) {
+  viewM += delta;
+  if (viewM < 1) { viewM = 12; viewY--; }
+  if (viewM > 12) { viewM = 1; viewY++; }
+  renderDashboard(); renderCalendar();
+}
+$('#btnPrevMonth').addEventListener('click', () => changeMonth(-1));
+$('#btnNextMonth').addEventListener('click', () => changeMonth(1));
+$('#btnToday').addEventListener('click', () => { viewY = today.getFullYear(); viewM = today.getMonth() + 1; renderDashboard(); renderCalendar(); });
+
+// 左右滑動切換月份
+(() => {
+  let sx = 0, sy = 0, t0 = 0;
+  const g = $('#calGrid');
+  g.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; t0 = Date.now(); }, { passive: true });
+  g.addEventListener('touchend', e => {
+    const t = e.changedTouches[0]; const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Date.now() - t0 < 500 && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) changeMonth(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
+
+/* =========================================================
+ *  當日微調面板
+ * ========================================================= */
+function openDay(key) {
+  editingDate = key;
+  renderDay();
+  openSheet('daySheet');
+  $('#dayBody').scrollTop = 0;
+}
+function renderDay() {
+  const key = editingDate;
+  if (!key) return;
+  const sh = state.shifts[key];
+  const [, m, d] = key.split('-').map(Number);
+  $('#dayTitle').textContent = `${m} 月 ${d} 日（${WEEK[weekdayOf(key)]}）`;
+  $('#daySub').textContent = key === todayKey ? '今天 · 當日班表詳細設定' : '當日班表詳細設定';
+  const body = $('#dayBody');
+
+  if (!sh) {
+    body.innerHTML = `
+      <div class="text-center py-5">
+        <div class="w-16 h-16 mx-auto rounded-full bg-white/5 grid place-items-center text-2xl text-white/30"><i class="fa-regular fa-calendar"></i></div>
+        <div class="mt-3 text-white/70">這天還沒有排班</div>
+      </div>
+      <div class="text-xs text-white/50 mb-2">套用常用班別</div>
+      <div class="grid grid-cols-2 gap-2">
+        ${state.stamps.map(st => `
+          <button data-act="apply-stamp" data-id="${st.id}" class="press p-3 rounded-2xl text-left border" style="background:${hexA(st.color, .14)};border-color:${hexA(st.color, .4)}">
+            <div class="font-bold" style="color:${st.color}">${esc(st.name)}</div>
+            <div class="text-xs text-white/60 tabular-nums">${st.start}-${st.end}${st.breakMin ? ` · 扣休${fmtHours(st.breakMin)}h` : ''}</div>
+          </button>`).join('')}
+      </div>
+      <button data-act="custom-shift" class="press w-full mt-3 py-3.5 rounded-2xl bg-white/10 font-semibold"><i class="fa-solid fa-clock"></i> 自訂時間排班</button>`;
+    return;
+  }
+
+  const r = wage() / 60, k = mult();
+  const nm = normalMinOf(sh), om = Number(sh.otMin) || 0;
+  const unpaid = isUnpaid(sh);
+  const chipsStamp = state.stamps.map(st => `
+    <button data-act="apply-stamp" data-id="${st.id}" class="press shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border"
+      style="border-color:${hexA(st.color, .6)};color:${sh.stampId === st.id ? '#fff' : st.color};background:${sh.stampId === st.id ? st.color : 'transparent'}">${esc(st.name)}</button>`).join('');
+  const brkOpts = [[0, '不扣'], [30, '0.5h'], [60, '1h'], [90, '1.5h']];
+  const brk = Number(sh.breakMin) || 0;
+  const stBtn = (v, label, sub, icon, on) => `
+    <button data-act="status" data-v="${v}" class="press py-2.5 px-1 rounded-xl text-xs font-bold flex flex-col items-center gap-1 leading-tight ${sh.status === v ? on : 'bg-white/5 text-white/60'}">
+      <i class="fa-solid ${icon} text-base"></i>${label}<span class="text-[10px] font-medium opacity-75">${sub}</span>
+    </button>`;
+  const bonusAmt = Number(state.settings.attendanceBonus) || 0;
+
+  body.innerHTML = `
+  <div class="space-y-4">
+    <!-- 班別 / 時間 -->
+    <div class="rounded-2xl p-4" style="background:${hexA(sh.color, .12)};border:1px solid ${hexA(sh.color, .35)}">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2 min-w-0"><span class="w-3 h-3 rounded-full shrink-0" style="background:${sh.color}"></span><span class="font-bold truncate">${esc(sh.name)}</span></div>
+        <div class="text-sm text-white/60 shrink-0">當日小計 <span id="dayTotal" class="font-bold text-white text-base tabular-nums"></span></div>
+      </div>
+      <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">${chipsStamp}</div>
+      <div class="text-xs text-white/50">修改表定上下班時間</div>
+      <div class="flex items-center gap-2 mt-1.5">
+        <input id="dStart" type="time" value="${sh.start}" class="tinput flex-1 text-center" />
+        <i class="fa-solid fa-arrow-right text-white/40"></i>
+        <input id="dEnd" type="time" value="${sh.end}" class="tinput flex-1 text-center" />
+      </div>
+      <div class="text-xs text-white/50 mt-3 mb-1.5">扣除無薪休息時間</div>
+      <div class="grid grid-cols-4 gap-2">
+        ${brkOpts.map(([v, l]) => `<button data-act="break" data-v="${v}" class="press py-2 rounded-xl text-sm font-semibold ${brk === v ? 'bg-white text-black' : 'bg-white/5 text-white/70'}">${l}</button>`).join('')}
+      </div>
+      <div class="text-sm text-white/70 mt-3 tabular-nums">
+        表定工時 <b class="text-white">${fmtHours(nm)} 小時</b> × $${wage()} = <b class="text-white">${moneySmart(nm * r)}</b>
+        ${isOvernight(sh.start, sh.end) ? '<span class="text-[11px] text-sky-300 ml-1">（跨夜班）</span>' : ''}
+        ${brk && ![0, 30, 60, 90].includes(brk) ? `<span class="text-[11px] text-white/40 ml-1">（扣休 ${brk} 分）</span>` : ''}
+      </div>
+    </div>
+
+    <!-- 分鐘級加班 -->
+    <div class="rounded-2xl p-4 bg-amber-400/10 border border-amber-400/30 ${unpaid ? 'opacity-50' : ''}">
+      <div class="flex items-end justify-between gap-2">
+        <div>
+          <div class="text-xs text-amber-200/70"><i class="fa-solid fa-stopwatch"></i> 今日已記錄加班</div>
+          <div class="text-4xl font-extrabold text-amber-300 tabular-nums leading-none mt-1"><span id="otMinBig">${om}</span><span class="text-base ml-1 font-bold">分鐘</span></div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-amber-200/70">今日加班多賺</div>
+          <div id="otEarn" class="text-2xl font-extrabold text-emerald-400 tabular-nums"></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-2 mt-4">
+        ${[1, 5, 10, 15, 30].map(v => `<button data-act="ot-add" data-v="${v}" class="press py-3 rounded-xl bg-amber-400 text-black font-extrabold text-base">+${v} 分</button>`).join('')}
+        <button data-act="ot-zero" class="press py-3 rounded-xl bg-white/10 text-white font-bold text-base"><i class="fa-solid fa-rotate-left text-sm"></i> 歸零</button>
+      </div>
+      <div class="flex items-center gap-2 mt-3">
+        <span class="text-sm text-white/60 shrink-0">直接輸入</span>
+        <input id="dOtInput" type="number" inputmode="numeric" min="0" step="1" value="${om}" class="tinput flex-1 text-center font-bold" />
+        <span class="text-sm text-white/60">分鐘</span>
+      </div>
+      <div id="otFormula" class="text-[11px] text-white/45 mt-2 tabular-nums"></div>
+      ${unpaid ? '<div class="text-[11px] text-rose-300 mt-1">此日標記為「請假（不計薪）」，加班不列入計算</div>' : ''}
+    </div>
+
+    <!-- 出勤狀態 -->
+    <div class="rounded-2xl p-4 bg-white/5">
+      <div class="text-xs text-white/50 mb-2">出勤狀態</div>
+      <div class="grid grid-cols-3 gap-2">
+        ${stBtn('normal', '正常出勤', '　', 'fa-circle-check', 'bg-emerald-500 text-white')}
+        ${stBtn('swap', '調班/代班', '不扣全勤', 'fa-right-left', 'bg-sky-500 text-white')}
+        ${stBtn('leave', '請假/遲到', '扣全勤', 'fa-triangle-exclamation', 'bg-rose-500 text-white')}
+      </div>
+      ${sh.status === 'leave' ? `
+        <div class="mt-3 rounded-xl bg-rose-500/15 border border-rose-500/40 p-3 text-sm text-rose-200">
+          <i class="fa-solid fa-triangle-exclamation"></i> 警告：本月全勤獎金 <b>${money(bonusAmt)}</b> 將被取消！
+        </div>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <button data-act="leave-type" data-v="late" class="press py-2.5 rounded-xl text-xs font-bold leading-tight ${sh.leaveType !== 'leave' ? 'bg-white text-black' : 'bg-white/5 text-white/60'}">⏰ 遲到<br><span class="font-medium opacity-70">照常計薪（可微調上班時間）</span></button>
+          <button data-act="leave-type" data-v="leave" class="press py-2.5 rounded-xl text-xs font-bold leading-tight ${sh.leaveType === 'leave' ? 'bg-white text-black' : 'bg-white/5 text-white/60'}">🏖 請假<br><span class="font-medium opacity-70">當日不計薪</span></button>
+        </div>` : ''}
+    </div>
+
+    <!-- 備註 -->
+    <div>
+      <div class="text-xs text-white/50 mb-1.5">備註</div>
+      <input id="dNote" class="tinput w-full" maxlength="60" placeholder="例如：幫小美代班、盤點" value="${esc(sh.note || '')}" />
+    </div>
+
+    <button data-act="delete" class="press w-full py-3.5 rounded-2xl bg-rose-500/15 text-rose-400 font-semibold"><i class="fa-solid fa-trash"></i> 刪除這天的班表</button>
+  </div>`;
+  updateOtUI(false);
+}
+function updateOtUI(animate = true) {
+  const sh = state.shifts[editingDate];
+  if (!sh) return;
+  const r = wage() / 60, k = mult();
+  const om = Number(sh.otMin) || 0;
+  const otRaw = otMinOf(sh) * r * k;
+  const daily = state.settings.roundingMode === 'daily';
+  const otShow = daily ? Math.round(otRaw) : otRaw;
+  const big = $('#otMinBig'), earn = $('#otEarn');
+  if (big) big.textContent = om;
+  if (earn) earn.textContent = '+' + moneySmart(otShow);
+  const inp = $('#dOtInput');
+  if (inp && document.activeElement !== inp) inp.value = om;
+  const f = $('#otFormula');
+  if (f) f.textContent = `算式：${om} 分 × ($${wage()} ÷ 60) × ${k} = ${moneySmart(om * r * k)}${daily ? '（單日四捨五入）' : '（月底加總再四捨五入）'}`;
+  const tot = $('#dayTotal');
+  if (tot) tot.textContent = moneySmart(normalMinOf(sh) * r + otShow);
+  if (animate) { bumpEl(big); bumpEl(earn); }
+}
+function commitDay(rerenderPanel = true) {
+  save();
+  renderDashboard();
+  renderCalendar();
+  if (rerenderPanel) renderDay();
+}
+$('#daySheet').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b || !editingDate) return;
+  const act = b.dataset.act;
+  const key = editingDate;
+  const sh = state.shifts[key];
+
+  if (act === 'day-prev' || act === 'day-next') {
+    const [y, m, d] = key.split('-').map(Number);
+    const dt = new Date(y, m - 1, d + (act === 'day-next' ? 1 : -1));
+    editingDate = dkey(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
+    if (dt.getFullYear() !== viewY || dt.getMonth() + 1 !== viewM) { viewY = dt.getFullYear(); viewM = dt.getMonth() + 1; renderDashboard(); renderCalendar(); }
+    renderDay();
+    return;
+  }
+  if (act === 'apply-stamp') {
+    const st = state.stamps.find(s => s.id === b.dataset.id);
+    if (!st) return;
+    const prev = sh || {};
+    state.shifts[key] = { name: st.name, color: st.color, start: st.start, end: st.end, breakMin: Number(st.breakMin) || 0, stampId: st.id,
+      otMin: prev.otMin || 0, status: prev.status || 'normal', leaveType: prev.leaveType || 'late', note: prev.note || '' };
+    vib(); commitDay(); return;
+  }
+  if (act === 'custom-shift') {
+    state.shifts[key] = { name: '自訂班', color: '#64D2FF', start: '09:00', end: '17:00', breakMin: 0, stampId: null, otMin: 0, status: 'normal', leaveType: 'late', note: '' };
+    commitDay(); return;
+  }
+  if (!sh) return;
+  if (act === 'break') { sh.breakMin = Number(b.dataset.v); commitDay(); return; }
+  if (act === 'ot-add') {
+    sh.otMin = Math.max(0, (Number(sh.otMin) || 0) + Number(b.dataset.v));
+    vib(8); save(); renderDashboard(); renderCalendar(); updateOtUI(); return;
+  }
+  if (act === 'ot-zero') { sh.otMin = 0; vib(8); save(); renderDashboard(); renderCalendar(); updateOtUI(); return; }
+  if (act === 'status') {
+    const v = b.dataset.v;
+    if (v === 'leave' && sh.status !== 'leave') {
+      const c = computeMonth(...key.split('-').slice(0, 2).map(Number));
+      if (c.bonusOk) toast(`⚠️ 已觸發扣除全勤獎金 ${money(state.settings.attendanceBonus)}`, 'warn', 3000);
+      vib([20, 40, 20]);
+    }
+    sh.status = v;
+    if (v === 'leave' && !sh.leaveType) sh.leaveType = 'late';
+    commitDay(); return;
+  }
+  if (act === 'leave-type') { sh.leaveType = b.dataset.v; commitDay(); return; }
+  if (act === 'delete') {
+    if (!confirm('確定要刪除這天的班表嗎？')) return;
+    delete state.shifts[key];
+    commitDay();
+    toast('已刪除班表');
+  }
+});
+$('#dayBody').addEventListener('change', e => {
+  const sh = state.shifts[editingDate];
+  if (!sh) return;
+  if (e.target.id === 'dStart' || e.target.id === 'dEnd') {
+    if (!e.target.value) { renderDay(); return; }
+    sh[e.target.id === 'dStart' ? 'start' : 'end'] = e.target.value;
+    commitDay();
+  }
+  if (e.target.id === 'dOtInput') { updateOtUI(false); }
+});
+$('#dayBody').addEventListener('input', e => {
+  const sh = state.shifts[editingDate];
+  if (!sh) return;
+  if (e.target.id === 'dOtInput') {
+    sh.otMin = Math.max(0, Math.floor(Number(e.target.value) || 0));
+    save(); renderDashboard(); renderCalendar(); updateOtUI();
+  }
+  if (e.target.id === 'dNote') { sh.note = e.target.value; save(); }
+});
+
+/* =========================================================
+ *  印章管理
+ * ========================================================= */
+let editingStampId = null, sfColor = PALETTE[0];
+function stampWorkMin(st) { return Math.max(0, spanMin(st.start, st.end) - (Number(st.breakMin) || 0)); }
+function openStampManager() { resetStampForm(); renderStampList(); openSheet('stampSheet'); }
+function renderSfColors() {
+  $('#sfColors').innerHTML = PALETTE.map(c => `<button data-color="${c}" class="press w-9 h-9 rounded-full grid place-items-center" style="background:${c};${c === sfColor ? 'box-shadow:0 0 0 3px #1c1c1e,0 0 0 5px ' + c : ''}" aria-label="${c}">${c === sfColor ? '<i class="fa-solid fa-check text-white text-sm"></i>' : ''}</button>`).join('');
+}
+function syncBreakChips() {
+  const v = Number($('#sfBreak').value) || 0;
+  $$('#sfBreakChips [data-brk]').forEach(b => b.classList.toggle('chip-on', Number(b.dataset.brk) === v));
+}
+function resetStampForm() {
+  editingStampId = null;
+  sfColor = PALETTE[state.stamps.length % PALETTE.length];
+  $('#sfTitle').textContent = '➕ 新增班別';
+  $('#sfName').value = '';
+  $('#sfStart').value = '09:00';
+  $('#sfEnd').value = '17:00';
+  $('#sfBreak').value = 0;
+  $('#sfSave').textContent = '新增班別';
+  $('#sfCancel').classList.add('hidden');
+  renderSfColors(); syncBreakChips();
+}
+function renderStampList() {
+  $('#stampList').innerHTML = state.stamps.length ? state.stamps.map(st => `
+    <div class="flex items-center gap-3 p-3">
+      <span class="w-10 h-10 rounded-xl grid place-items-center shrink-0" style="background:${hexA(st.color, .2)};color:${st.color}"><i class="fa-solid fa-stamp"></i></span>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold truncate">${esc(st.name)}</div>
+        <div class="text-xs text-white/50 tabular-nums">${st.start}-${st.end} · ${st.breakMin ? '扣休 ' + fmtHours(st.breakMin) + 'h' : '不扣休息'} · 工時 ${fmtHours(stampWorkMin(st))}h</div>
+      </div>
+      <button data-sedit="${st.id}" class="press w-9 h-9 rounded-full bg-white/10 grid place-items-center" aria-label="編輯"><i class="fa-solid fa-pen text-xs"></i></button>
+      <button data-sdel="${st.id}" class="press w-9 h-9 rounded-full bg-rose-500/15 text-rose-400 grid place-items-center" aria-label="刪除"><i class="fa-solid fa-trash text-xs"></i></button>
+    </div>`).join('') : '<div class="p-5 text-center text-white/40 text-sm">尚無班別，請從上方新增</div>';
+}
+$('#sfColors').addEventListener('click', e => { const b = e.target.closest('[data-color]'); if (b) { sfColor = b.dataset.color; renderSfColors(); } });
+$('#sfBreakChips').addEventListener('click', e => { const b = e.target.closest('[data-brk]'); if (b) { $('#sfBreak').value = b.dataset.brk; syncBreakChips(); } });
+$('#sfBreak').addEventListener('input', syncBreakChips);
+$('#sfCancel').addEventListener('click', resetStampForm);
+$('#stampList').addEventListener('click', e => {
+  const ed = e.target.closest('[data-sedit]'), del = e.target.closest('[data-sdel]');
+  if (ed) {
+    const st = state.stamps.find(s => s.id === ed.dataset.sedit);
+    if (!st) return;
+    editingStampId = st.id; sfColor = st.color;
+    $('#sfTitle').textContent = `✏️ 編輯「${st.name}」`;
+    $('#sfName').value = st.name; $('#sfStart').value = st.start; $('#sfEnd').value = st.end; $('#sfBreak').value = st.breakMin || 0;
+    $('#sfSave').textContent = '儲存修改';
+    $('#sfCancel').classList.remove('hidden');
+    renderSfColors(); syncBreakChips();
+    $('#stampSheet .sheet-body').scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  if (del) {
+    const st = state.stamps.find(s => s.id === del.dataset.sdel);
+    if (!st || !confirm(`確定刪除「${st.name}」印章？（已排入月曆的班表不受影響）`)) return;
+    state.stamps = state.stamps.filter(s => s.id !== st.id);
+    if (activeStampId === st.id) activeStampId = null;
+    if (editingStampId === st.id) resetStampForm();
+    save(); renderStampList(); renderStamps(); renderStampModeBar();
+  }
+});
+$('#sfSave').addEventListener('click', () => {
+  const name = $('#sfName').value.trim();
+  const start = $('#sfStart').value, end = $('#sfEnd').value;
+  const breakMin = Math.max(0, Math.floor(Number($('#sfBreak').value) || 0));
+  if (!name) return toast('請輸入班別名稱', 'error');
+  if (!start || !end) return toast('請設定上下班時間', 'error');
+  if (breakMin >= spanMin(start, end)) return toast('休息時間不能大於或等於班別長度', 'error');
+  if (editingStampId) {
+    const st = state.stamps.find(s => s.id === editingStampId);
+    if (!st) return;
+    Object.assign(st, { name, start, end, breakMin, color: sfColor });
+    const linked = Object.values(state.shifts).filter(sh => sh.stampId === st.id);
+    if (linked.length && confirm(`有 ${linked.length} 天的班表使用此印章，要一併更新它們的時間與顏色嗎？`)) {
+      linked.forEach(sh => Object.assign(sh, { name, start, end, breakMin, color: sfColor }));
+    }
+    toast('✅ 已更新班別', 'success');
+  } else {
+    state.stamps.push({ id: 's' + Date.now().toString(36), name, start, end, breakMin, color: sfColor });
+    toast('✅ 已新增班別', 'success');
+  }
+  save(); resetStampForm(); renderStampList(); renderAll();
+});
+
+/* =========================================================
+ *  設定
+ * ========================================================= */
+let pendingRound = 'monthly';
+function syncMultChips() {
+  const v = parseFloat($('#setMult').value);
+  $$('#multChips [data-mult]').forEach(b => b.classList.toggle('chip-on', Math.abs(Number(b.dataset.mult) - v) < 1e-9));
+}
+function syncRound() {
+  $$('[data-round]').forEach(b => {
+    const on = b.dataset.round === pendingRound;
+    b.className = `press py-2.5 rounded-lg text-sm font-semibold leading-tight ${on ? 'bg-white text-black' : 'text-white/60'}`;
+  });
+  $('#roundHint').textContent = pendingRound === 'monthly'
+    ? '（預設）把整月加班分鐘數加總後，計算金額再四捨五入一次，最精準。'
+    : '每天的加班費先各自四捨五入成整數，再加總成月薪。';
+}
+function openSettings() {
+  const s = state.settings;
+  $('#setWage').value = s.hourlyWage;
+  $('#setMult').value = s.otMultiplier;
+  $('#setBonus').value = s.attendanceBonus;
+  $('#setName').value = s.myName;
+  $('#setKey').value = s.apiKey;
+  $('#setKey').type = 'password';
+  $('#btnToggleKey').innerHTML = '<i class="fa-solid fa-eye"></i>';
+  $('#setHints').value = s.codeHints;
+  pendingRound = s.roundingMode;
+  syncMultChips(); syncRound();
+  openSheet('settingsSheet');
+}
+$('#btnSettings').addEventListener('click', openSettings);
+$('#multChips').addEventListener('click', e => { const b = e.target.closest('[data-mult]'); if (b) { $('#setMult').value = b.dataset.mult; syncMultChips(); } });
+$('#setMult').addEventListener('input', syncMultChips);
+$$('[data-round]').forEach(b => b.addEventListener('click', () => { pendingRound = b.dataset.round; syncRound(); }));
+$('#btnToggleKey').addEventListener('click', () => {
+  const k = $('#setKey'); const show = k.type === 'password';
+  k.type = show ? 'text' : 'password';
+  $('#btnToggleKey').innerHTML = `<i class="fa-solid ${show ? 'fa-eye-slash' : 'fa-eye'}"></i>`;
+});
+$('#btnSaveSettings').addEventListener('click', () => {
+  const w = Number($('#setWage').value), mu = Number($('#setMult').value), bo = Number($('#setBonus').value);
+  if (!isFinite(w) || w <= 0) return toast('請輸入正確的時薪', 'error');
+  if (!isFinite(mu) || mu < 0) return toast('請輸入正確的加班倍率', 'error');
+  if (!isFinite(bo) || bo < 0) return toast('請輸入正確的全勤獎金', 'error');
+  Object.assign(state.settings, {
+    hourlyWage: w, otMultiplier: mu, attendanceBonus: bo, roundingMode: pendingRound,
+    myName: $('#setName').value.trim() || '王凱弘',
+    apiKey: $('#setKey').value.trim(),
+    codeHints: $('#setHints').value.trim()
+  });
+  save(); renderAll(); refreshImportMeta();
+  closeSheet('settingsSheet');
+  toast('✅ 設定已儲存', 'success');
+});
+$('#btnExport').addEventListener('click', () => {
+  const data = { ...state, settings: { ...state.settings, apiKey: '' }, exportedAt: new Date().toISOString(), app: 'shiftpay' };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `打工薪水帳備份-${todayKey}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('已匯出備份（不含 API Key）', 'success');
+});
+$('#fileBackup').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!data || typeof data.shifts !== 'object') throw new Error('格式不符');
+    if (!confirm('匯入備份會覆蓋目前所有班表與設定（API Key 會保留），確定嗎？')) return;
+    const keepKey = state.settings.apiKey;
+    const d = DEFAULT_STATE();
+    state = {
+      settings: { ...d.settings, ...(data.settings || {}), apiKey: keepKey },
+      stamps: Array.isArray(data.stamps) ? data.stamps : d.stamps,
+      shifts: data.shifts
+    };
+    save(); renderAll(); closeSheet('settingsSheet');
+    toast('✅ 備份已匯入', 'success');
+  } catch (err) { toast('匯入失敗：' + err.message, 'error'); }
+});
+$('#btnClearMonth').addEventListener('click', () => {
+  const pre = ymPrefix(viewY, viewM) + '-';
+  const keys = Object.keys(state.shifts).filter(k => k.startsWith(pre));
+  if (!keys.length) return toast('本月沒有班表');
+  if (!confirm(`確定清除 ${viewY} 年 ${viewM} 月的 ${keys.length} 筆班表？`)) return;
+  keys.forEach(k => delete state.shifts[k]);
+  save(); renderAll(); toast('已清除本月班表');
+});
+$('#btnResetAll').addEventListener('click', () => {
+  if (!confirm('⚠️ 確定要重置全部資料？所有班表、印章與設定都會刪除且無法復原！')) return;
+  localStorage.removeItem(LS_KEY);
+  state = DEFAULT_STATE();
+  activeStampId = null;
+  save(); renderAll(); closeSheet('settingsSheet');
+  toast('已重置全部資料');
+});
+
+/* =========================================================
+ *  月底對帳單
+ * ========================================================= */
+let summaryText = '';
+function renderSummary() {
+  const c = computeMonth(viewY, viewM), s = state.settings;
+  const r = wage() / 60, k = mult(), daily = s.roundingMode === 'daily';
+  const statusTag = sh => sh.status === 'swap' ? '<span class="ml-1 text-[10px] px-1 rounded bg-sky-100 text-sky-700">代班</span>'
+    : sh.status === 'leave' ? `<span class="ml-1 text-[10px] px-1 rounded bg-rose-100 text-rose-700">${sh.leaveType === 'leave' ? '請假' : '遲到'}</span>` : '';
+  const statusTxt = sh => sh.status === 'swap' ? '［代班］' : sh.status === 'leave' ? (sh.leaveType === 'leave' ? '［請假］' : '［遲到］') : '';
+  const rowsHtml = c.rows.map(row => {
+    const [, m, d] = row.key.split('-').map(Number);
+    const sh = row.sh;
+    return `<tr class="border-t border-neutral-100 align-top">
+      <td class="py-1.5 whitespace-nowrap">${m}/${d}<span class="text-neutral-400">(${WEEK[weekdayOf(row.key)]})</span>${statusTag(sh)}</td>
+      <td class="py-1.5 tabular-nums">${sh.start}-${sh.end}${sh.breakMin ? `<div class="text-[10px] text-neutral-400">扣休 ${fmtHours(sh.breakMin)}h</div>` : ''}</td>
+      <td class="py-1.5 text-right tabular-nums">${fmtHours(row.nm)}h</td>
+      <td class="py-1.5 text-right tabular-nums ${row.om ? 'text-amber-600 font-semibold' : 'text-neutral-300'}">${row.om ? row.om + '分' : '-'}</td>
+      <td class="py-1.5 text-right font-semibold tabular-nums">${moneySmart(row.normalPay + row.otPay)}</td>
+    </tr>`;
+  }).join('');
+  const bonusAmt = Number(s.attendanceBonus) || 0;
+  const bonusLine = c.bonusOk ? `${money(bonusAmt)} ✅ 全勤達成`
+    : c.hasShift ? `$0 ❌ 請假/遲到 ${c.leaveCount} 天` : '$0（本月尚無排班）';
+  const otLine = daily
+    ? `${c.oMin} 分（單日各自四捨五入後加總）`
+    : `${c.oMin} 分 × ($${wage()} ÷ 60) × ${k}`;
+
+  $('#summaryBody').innerHTML = `
+    <div class="bg-white text-neutral-900 rounded-2xl p-4 shadow-xl">
+      <div class="text-center border-b border-dashed border-neutral-300 pb-3">
+        <div class="text-[11px] tracking-widest text-neutral-500">薪 資 對 帳 單</div>
+        <div class="text-xl font-extrabold mt-0.5">${viewY} 年 ${viewM} 月</div>
+        <div class="text-sm text-neutral-600">${esc(s.myName)}　·　時薪 $${wage()}　·　加班 ×${k}</div>
+      </div>
+      ${c.rows.length ? `
+      <table class="w-full text-[12.5px] mt-2">
+        <thead><tr class="text-neutral-500 text-[11px]">
+          <th class="text-left py-1.5 font-medium">日期</th><th class="text-left font-medium">表定時間</th>
+          <th class="text-right font-medium">工時</th><th class="text-right font-medium">加班</th><th class="text-right font-medium">小計</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>` : '<div class="text-center text-neutral-400 py-8 text-sm">本月尚無排班紀錄</div>'}
+      <div class="border-t border-dashed border-neutral-300 mt-2 pt-3 space-y-2 text-[13px]">
+        <div class="flex justify-between gap-3"><span class="text-neutral-500 shrink-0">出勤天數</span><span class="text-right">${c.days.length} 天</span></div>
+        <div class="flex justify-between gap-3"><span class="text-neutral-500 shrink-0">正常工時</span><span class="text-right tabular-nums">${fmtHours(c.nMin)} 小時 × $${wage()} = <b>${money(c.normalPay)}</b></span></div>
+        <div class="flex justify-between gap-3"><span class="text-neutral-500 shrink-0">加班費</span><span class="text-right tabular-nums">${otLine} = <b>${money(c.otPay)}</b></span></div>
+        <div class="flex justify-between gap-3"><span class="text-neutral-500 shrink-0">全勤獎金</span><span class="text-right"><b>${bonusLine}</b></span></div>
+      </div>
+      <div class="border-t-2 border-neutral-900 mt-3 pt-3">
+        <div class="text-[11px] text-neutral-500 tabular-nums">${money(c.normalPay)} + ${money(c.otPay)} + ${money(c.bonus)}</div>
+        <div class="flex justify-between items-end">
+          <span class="font-bold">本月應領總額</span><span class="text-3xl font-extrabold tabular-nums">${money(c.total)}</span>
+        </div>
+      </div>
+      <div class="text-[10px] text-neutral-400 text-center mt-3">${daily ? '加班費：單日各自四捨五入' : '加班費：整月分鐘數加總後四捨五入'}　·　產生於 ${new Date().toLocaleString('zh-TW', { hour12: false })}</div>
+    </div>`;
+
+  const lines = [];
+  lines.push(`【${viewY}年${viewM}月 薪資對帳單】${s.myName}`);
+  lines.push(`時薪 $${wage()}｜加班倍率 ×${k}｜${daily ? '單日各自四捨五入' : '整月加總後四捨五入'}`);
+  lines.push('------------------------------');
+  c.rows.forEach(row => {
+    const [, m, d] = row.key.split('-').map(Number);
+    const sh = row.sh;
+    lines.push(`${m}/${d}(${WEEK[weekdayOf(row.key)]}) ${sh.name} ${sh.start}-${sh.end} 工時${fmtHours(row.nm)}h${row.om ? ` 加班${row.om}分` : ''}${statusTxt(sh)} ${moneySmart(row.normalPay + row.otPay)}`);
+  });
+  lines.push('------------------------------');
+  lines.push(`正常工時：${fmtHours(c.nMin)}h × $${wage()} = ${money(c.normalPay)}`);
+  lines.push(`加班費：${otLine} = ${money(c.otPay)}`);
+  lines.push(`全勤獎金：${bonusLine}`);
+  lines.push(`本月應領：${money(c.total)}`);
+  summaryText = lines.join('\n');
+}
+$('#btnSummary').addEventListener('click', () => { renderSummary(); openSheet('summarySheet'); $('#summarySheet .sheet-body').scrollTop = 0; });
+$('#btnCopySummary').addEventListener('click', async () => {
+  toast(await copyText(summaryText) ? '✅ 已複製對帳單文字' : '複製失敗，請手動截圖', 'success');
+});
+
+/* =========================================================
+ *  📸 AI 智慧辨識匯入班表
+ * ========================================================= */
+let importImage = null;   // { mime, b64, dataUrl }
+let importRows = [];      // { date, rawDate, startTime, endTime, note, checked }
+let importTab = 'photo';
+
+function impYM() { return { y: Number($('#impYear').value), m: Number($('#impMonth').value) }; }
+
+function buildPrompt(y, m) {
+  const s = state.settings;
+  const dim = new Date(y, m, 0).getDate();
+  const firstWd = WEEK[new Date(y, m - 1, 1).getDay()];
+  return `你是一位專精辨識「餐飲/零售店主管手寫排班表」的資料擷取助理。請仔細分析這張手寫班表照片。
+
+【任務】
+1. 表格中通常有多位同事。請只找出姓名為「${s.myName}」的那一列（或那一欄）的所有排班。姓名可能被簡寫成名字、單字或暱稱（例如「${s.myName.slice(-2)}」「${s.myName.slice(-1)}」），請依合理性判斷，不要誤抓其他人的班。
+2. 這份班表是 ${y} 年 ${m} 月（共 ${dim} 天，${m} 月 1 日是星期${firstWd}）。請把每一格對應到正確日期，輸出格式為 YYYY-MM-DD。若表格只寫日期數字或星期，請依此月曆推算。
+3. 將手寫時間轉換為標準 24 小時制 "HH:MM"，例如：
+   - "18-22" → startTime "18:00"、endTime "22:00"
+   - "9-5" 或 "9~5" → "09:00"-"17:00"（下班數字小於上班數字時，通常代表下午）
+   - "10半-7" 或 "10:30-7" → "10:30"-"19:00"
+   - "5-12" 晚班若明顯是晚上 → "17:00"-"00:00"
+4. 休假、空白、畫斜線「/」、打「X」、寫「休」「off」「例」「休假」的日期，請不要輸出。
+5. note 欄位請填入該格手寫的原始字樣（例如 "18-22"、"早"、"晚"）；若字跡不確定，請給出最可能的結果並在 note 末尾加上 "(?)"。
+6. 店家手寫代號對照（請優先遵守）：${s.codeHints ? s.codeHints : '（無特別說明，請依常理判斷）'}
+
+【輸出規則】
+- 只輸出純 JSON 陣列，不要任何說明文字、不要 markdown 程式碼框。
+- 格式：[{"date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","note":"手寫原字樣"}]
+- 依日期由小到大排序。若照片中找不到「${s.myName}」，請輸出 []。`;
+}
+
+function refreshImportMeta() {
+  $('#impNameLabel').textContent = state.settings.myName;
+  $('#impKeyWarn').classList.toggle('hidden', !!state.settings.apiKey);
+  const { y, m } = impYM();
+  if (y && m) $('#promptPreview').textContent = buildPrompt(y, m);
+}
+function setImportTab(tab) {
+  importTab = tab;
+  $$('[data-imptab]').forEach(b => {
+    const on = b.dataset.imptab === tab;
+    b.className = `press py-2.5 rounded-lg text-sm font-semibold ${on ? 'bg-white text-black shadow' : 'text-white/60'}`;
+  });
+  $('#panePhoto').classList.toggle('hidden', tab !== 'photo');
+  $('#paneJson').classList.toggle('hidden', tab !== 'json');
+}
+function openImport() {
+  const ys = $('#impYear');
+  ys.innerHTML = [viewY - 1, viewY, viewY + 1].map(y => `<option value="${y}">${y} 年</option>`).join('');
+  ys.value = viewY;
+  $('#impMonth').innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1} 月</option>`).join('');
+  $('#impMonth').value = viewM;
+  setImportTab(importTab);
+  refreshImportMeta();
+  renderImportRows();
+  openSheet('importSheet');
+}
+$('#btnImport').addEventListener('click', openImport);
+$$('[data-imptab]').forEach(b => b.addEventListener('click', () => setImportTab(b.dataset.imptab)));
+$('#impYear').addEventListener('change', () => { refreshImportMeta(); renderImportRows(); });
+$('#impMonth').addEventListener('change', () => { refreshImportMeta(); renderImportRows(); });
+$('#impGoSettings').addEventListener('click', () => { openSettings(); setTimeout(() => $('#setKey').focus(), 400); });
+$('#impEditName').addEventListener('click', () => { openSettings(); setTimeout(() => $('#setName').focus(), 400); });
+
+/* ---- 圖片處理：壓縮並轉 Base64 ---- */
+async function processImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = () => rej(new Error('無法讀取圖片（若是 HEIC 格式請改用 JPG/PNG）'));
+      i.src = url;
+    });
+    const MAX = 2048;
+    let w = img.naturalWidth, h = img.naturalHeight;
+    const sc = Math.min(1, MAX / Math.max(w, h));
+    w = Math.round(w * sc); h = Math.round(h * sc);
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const dataUrl = cv.toDataURL('image/jpeg', 0.9);
+    return { mime: 'image/jpeg', b64: dataUrl.split(',')[1], dataUrl, w, h };
+  } finally { URL.revokeObjectURL(url); }
+}
+async function onPickImage(e) {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    $('#impStatus').innerHTML = '<span class="text-white/50"><i class="fa-solid fa-spinner" style="animation:spin 1s linear infinite"></i> 處理圖片中…</span>';
+    importImage = await processImage(f);
+    $('#impPreview').src = importImage.dataUrl;
+    $('#impImgInfo').textContent = `${importImage.w} × ${importImage.h} px · 約 ${Math.round(importImage.b64.length * 0.75 / 1024)} KB`;
+    $('#impEmpty').classList.add('hidden');
+    $('#impPreviewWrap').classList.remove('hidden');
+    $('#btnRecognize').disabled = false;
+    $('#impStatus').innerHTML = '';
+  } catch (err) {
+    $('#impStatus').innerHTML = `<div class="text-rose-400"><i class="fa-solid fa-circle-xmark"></i> ${esc(err.message)}</div>`;
+  }
+}
+['#fileCamera', '#fileGallery', '#fileReselect'].forEach(id => $(id).addEventListener('change', onPickImage));
+
+/* ---- JSON 解析與正規化 ---- */
+function parseLooseJSON(text) {
+  let t = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try { return JSON.parse(t); } catch (e) {}
+  const a = t.indexOf('['), b = t.lastIndexOf(']');
+  if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e) {} }
+  const c = t.indexOf('{'), d = t.lastIndexOf('}');
+  if (c >= 0 && d > c) { try { return JSON.parse(t.slice(c, d + 1)); } catch (e) {} }
+  throw new Error('無法解析 JSON，請確認格式是否正確');
+}
+function extractArray(data) {
+  if (Array.isArray(data)) return data;
+  if (data && typeof data === 'object') {
+    for (const v of Object.values(data)) if (Array.isArray(v)) return v;
+    if (data.date) return [data];
+  }
+  throw new Error('JSON 內找不到班表陣列');
+}
+function normTime(v) {
+  if (v == null) return '';
+  const s = String(v).trim().replace(/：/g, ':').replace(/\s/g, '').replace(/[.．]/g, ':');
+  let m = s.match(/^(\d{1,2})(?::(\d{1,2}))?$/);
+  if (!m) { const m2 = s.match(/^(\d{1,2})(\d{2})$/); if (m2) m = [null, m2[1], m2[2]]; }
+  if (!m) return '';
+  let h = Number(m[1]); const mi = Number(m[2] || 0);
+  if (h === 24 && mi === 0) h = 0;
+  if (h > 23 || mi > 59) return '';
+  return `${pad(h)}:${pad(mi)}`;
+}
+function normDate(v, y, m) {
+  if (v == null) return '';
+  const s = String(v).trim();
+  let r;
+  if ((r = s.match(/^(\d{4})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})/))) return dkey(+r[1], +r[2], +r[3]);
+  if ((r = s.match(/^(\d{1,2})\s*[-\/.月]\s*(\d{1,2})/))) return dkey(y, +r[1], +r[2]);
+  if ((r = s.match(/^(\d{1,2})\s*日?$/))) return dkey(y, m, +r[1]);
+  return '';
+}
+function rowValid(r) { return isValidDate(r.date) && /^\d{2}:\d{2}$/.test(r.startTime) && /^\d{2}:\d{2}$/.test(r.endTime); }
+function loadImportRows(arr) {
+  const { y, m } = impYM();
+  const rows = arr.map(it => {
+    const o = (it && typeof it === 'object') ? it : {};
+    const rawDate = o.date ?? o.day ?? '';
+    const r = {
+      date: normDate(rawDate, y, m),
+      rawDate: String(rawDate),
+      startTime: normTime(o.startTime ?? o.start ?? o.begin),
+      endTime: normTime(o.endTime ?? o.end ?? o.finish),
+      note: String(o.note ?? o.raw ?? o.original ?? '').slice(0, 40)
+    };
+    r.checked = rowValid(r);
+    return r;
+  });
+  rows.sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+  importRows = rows;
+  renderImportRows();
+  setTimeout(() => $('#impResults').scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
+function renderImportRows() {
+  const wrap = $('#impResults');
+  if (!importRows.length) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  const { y, m } = impYM();
+  const pre = ymPrefix(y, m);
+  const dupCount = {};
+  importRows.forEach(r => { if (r.date) dupCount[r.date] = (dupCount[r.date] || 0) + 1; });
+
+  $('#impList').innerHTML = importRows.map((r, i) => {
+    const okDate = isValidDate(r.date);
+    const ok = rowValid(r);
+    const wd = okDate ? WEEK[weekdayOf(r.date)] : '?';
+    const [, mm, dd] = okDate ? r.date.split('-').map(Number) : [0, 0, 0];
+    const badges = [];
+    if (!okDate) badges.push('<span class="text-rose-400">日期無法辨識</span>');
+    else if (!r.date.startsWith(pre)) badges.push(`<span class="text-amber-300">非 ${m} 月</span>`);
+    if (okDate && !ok) badges.push('<span class="text-rose-400">時間有誤</span>');
+    if (okDate && state.shifts[r.date]) badges.push('<span class="text-sky-300">將覆蓋原班表</span>');
+    if (okDate && dupCount[r.date] > 1) badges.push('<span class="text-amber-300">日期重複</span>');
+    if (ok && isOvernight(r.startTime, r.endTime)) badges.push('<span class="text-sky-300">跨夜</span>');
+    return `<div class="flex items-center gap-3 p-3 rounded-2xl border transition ${r.checked ? 'bg-white/[.07]' : 'bg-white/[.02] opacity-55'} ${ok ? 'border-transparent' : 'border-rose-500/50'}">
+      <div class="w-12 shrink-0 text-center leading-tight">
+        <div class="font-extrabold text-[15px] tabular-nums">${okDate ? `${mm}/${dd}` : esc(r.rawDate || '?')}</div>
+        <div class="text-[11px] ${wd === '日' || wd === '六' ? 'text-rose-400' : 'text-white/50'}">(${wd})</div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-1">
+          <input data-i="${i}" data-f="startTime" type="time" value="${r.startTime}" class="tinput tsmall tabular-nums" aria-label="上班時間" />
+          <span class="text-white/40">-</span>
+          <input data-i="${i}" data-f="endTime" type="time" value="${r.endTime}" class="tinput tsmall tabular-nums" aria-label="下班時間" />
+        </div>
+        <div class="text-[11px] text-white/50 mt-1 flex flex-wrap gap-x-2">
+          <span class="truncate max-w-full">✍️ 手寫：${esc(r.note || '—')}</span>${badges.join('')}
+        </div>
+      </div>
+      <input data-i="${i}" data-f="checked" type="checkbox" ${r.checked ? 'checked' : ''} ${okDate ? '' : 'disabled'} class="w-6 h-6 accent-emerald-500 shrink-0" aria-label="勾選匯入" />
+    </div>`;
+  }).join('');
+
+  const n = importRows.filter(r => r.checked && rowValid(r)).length;
+  $('#impCount').textContent = `（${importRows.length} 筆，已選 ${n}）`;
+  const selectable = importRows.filter(r => isValidDate(r.date));
+  $('#impAll').checked = selectable.length > 0 && selectable.every(r => r.checked);
+  const btn = $('#btnImportConfirm');
+  btn.disabled = n === 0;
+  btn.textContent = n ? `✅ 確認無誤，一鍵寫入本月班表（${n} 筆）` : '請至少勾選一筆正確的班表';
+}
+$('#impList').addEventListener('change', e => {
+  const el = e.target; const i = Number(el.dataset.i);
+  const r = importRows[i];
+  if (!r) return;
+  if (el.dataset.f === 'checked') r.checked = el.checked;
+  else {
+    r[el.dataset.f] = el.value;
+    if (rowValid(r) && !r._touched) r.checked = true;
+    r._touched = true;
+  }
+  renderImportRows();
+});
+$('#impAll').addEventListener('change', e => {
+  importRows.forEach(r => { if (isValidDate(r.date)) r.checked = e.target.checked; });
+  renderImportRows();
+});
+$('#btnImpClear').addEventListener('click', () => { importRows = []; renderImportRows(); });
+
+/* ---- 呼叫 Gemini API ---- */
+$('#btnRecognize').addEventListener('click', async () => {
+  const key = (state.settings.apiKey || '').trim();
+  if (!key) {
+    toast('請先到「設定」填入 Gemini API Key', 'error');
+    $('#impKeyWarn').classList.remove('hidden');
+    return;
+  }
+  if (!importImage) return toast('請先選擇班表照片', 'error');
+  const { y, m } = impYM();
+  const btn = $('#btnRecognize');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner" style="animation:spin 1s linear infinite"></i> AI 辨識中，請稍候（約 10~30 秒）…';
+  $('#impStatus').innerHTML = `<div class="text-white/50">🔎 正在照片中尋找「${esc(state.settings.myName)}」的排班…</div>`;
+  try {
+    const body = {
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: buildPrompt(y, m) },
+          { inline_data: { mime_type: importImage.mime, data: importImage.b64 } }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              date: { type: 'STRING' },
+              startTime: { type: 'STRING' },
+              endTime: { type: 'STRING' },
+              note: { type: 'STRING' }
+            },
+            required: ['date', 'startTime', 'endTime']
+          }
+        }
+      }
+    };
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = data?.error?.message || `HTTP ${res.status}`;
+      if (res.status === 400 && /API key/i.test(msg)) throw new Error('API Key 無效，請到設定確認');
+      if (res.status === 429) throw new Error('請求太頻繁或超過免費額度，請稍後再試');
+      throw new Error(msg);
+    }
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const text = parts.filter(p => !p.thought).map(p => p.text || '').join('');
+    if (!text) {
+      const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || '未知原因';
+      throw new Error(`AI 沒有回傳內容（${reason}）`);
+    }
+    const arr = extractArray(parseLooseJSON(text));
+    if (!arr.length) {
+      $('#impStatus').innerHTML = `<div class="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-amber-200">🤔 AI 沒有在照片中找到「${esc(state.settings.myName)}」的排班。請確認設定中的姓名與班表上的寫法一致，或換一張更清晰的照片。</div>`;
+      importRows = []; renderImportRows();
+      return;
+    }
+    $('#impStatus').innerHTML = `<div class="text-emerald-400"><i class="fa-solid fa-circle-check"></i> 辨識完成！找到 ${arr.length} 筆排班，請在下方逐列核對。</div>`;
+    loadImportRows(arr);
+  } catch (err) {
+    console.error(err);
+    const msg = /Failed to fetch|NetworkError/i.test(err.message) ? '網路連線失敗，請檢查網路後重試' : err.message;
+    $('#impStatus').innerHTML = `<div class="rounded-xl bg-rose-500/10 border border-rose-500/30 p-3 text-rose-300"><i class="fa-solid fa-circle-xmark"></i> 辨識失敗：${esc(msg)}<div class="text-xs text-rose-300/70 mt-1">也可以改用「貼上 JSON」模式。</div></div>`;
+  } finally {
+    btn.disabled = !importImage;
+    btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 重新辨識';
+  }
+});
+
+/* ---- 模式二：手動貼上 JSON ---- */
+$('#btnCopyPrompt').addEventListener('click', async () => {
+  const { y, m } = impYM();
+  const ok = await copyText(buildPrompt(y, m));
+  toast(ok ? '✅ 已複製 Prompt，請貼到聊天 AI 並附上照片' : '複製失敗，請展開下方內容手動複製', ok ? 'success' : 'error', 3000);
+});
+$('#btnParseJson').addEventListener('click', () => {
+  const t = $('#impJson').value.trim();
+  if (!t) return toast('請先貼上 JSON', 'error');
+  try {
+    const arr = extractArray(parseLooseJSON(t));
+    if (!arr.length) return toast('JSON 陣列是空的', 'error');
+    loadImportRows(arr);
+    toast(`解析成功，共 ${arr.length} 筆，請核對`, 'success');
+  } catch (err) { toast(err.message, 'error'); }
+});
+
+/* ---- 確認寫入 ---- */
+$('#btnImportConfirm').addEventListener('click', () => {
+  const picked = importRows.filter(r => r.checked && rowValid(r));
+  if (!picked.length) return;
+  const overwrite = picked.filter(r => state.shifts[r.date]).length;
+  if (overwrite && !confirm(`其中 ${overwrite} 天已有班表，將會被覆蓋（已記錄的加班分鐘與出勤狀態會保留），確定寫入？`)) return;
+  const brkDefault = Number($('#impBreak').value) || 0;
+  picked.forEach(r => {
+    const st = state.stamps.find(s => s.start === r.startTime && s.end === r.endTime);
+    const prev = state.shifts[r.date] || {};
+    state.shifts[r.date] = {
+      name: st ? st.name : '匯入班',
+      color: st ? st.color : '#64D2FF',
+      start: r.startTime, end: r.endTime,
+      breakMin: st ? (Number(st.breakMin) || 0) : brkDefault,
+      stampId: st ? st.id : null,
+      otMin: prev.otMin || 0,
+      status: prev.status || 'normal',
+      leaveType: prev.leaveType || 'late',
+      note: r.note ? `手寫：${r.note}` : (prev.note || '')
+    };
+  });
+  save();
+  const { y, m } = impYM();
+  viewY = y; viewM = m;
+  importRows = []; importImage = null;
+  $('#impEmpty').classList.remove('hidden');
+  $('#impPreviewWrap').classList.add('hidden');
+  $('#btnRecognize').disabled = true;
+  $('#btnRecognize').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> 開始辨識';
+  $('#impStatus').innerHTML = '';
+  $('#impJson').value = '';
+  renderImportRows();
+  renderAll();
+  closeSheet('importSheet');
+  vib([15, 30, 15]);
+  toast(`🎉 已寫入 ${picked.length} 天班表，薪資已重新計算`, 'success', 3000);
+});
+
+/* =========================================================
+ *  初始化
+ * ========================================================= */
+function renderAll() {
+  renderDashboard();
+  renderStamps();
+  renderCalendar();
+  renderStampModeBar();
+  if (editingDate) renderDay();
+}
+renderAll();
+</script>
+</body>
+</html>
