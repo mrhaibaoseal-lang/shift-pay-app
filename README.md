@@ -1,31 +1,23 @@
-# 💰 打工薪水帳｜工讀生排班紀錄與精準薪資計算
+# 💰 打工薪水帳 V2｜工讀生排班紀錄與精準薪資計算
 
-單一 `index.html` 打造的 Mobile-First Web App（HTML5 + Tailwind CSS + JavaScript + FontAwesome），資料全部存在瀏覽器 `localStorage`。
+單一 `index.html` 打造的 Mobile-First Web App（HTML5 + Tailwind CSS + JavaScript + FontAwesome），資料全部存在瀏覽器 `localStorage`（向下相容 V1 `shiftpay.v1`）。
 
-## 功能
-- 本月薪資儀表板（正常工時 / 分鐘級加班費 / 全勤獎金狀態）
-- 🖋 色塊印章模式：選班別 → 點日期一鍵蓋章
-- 當日微調面板：表定時間、無薪休息、+1/+5/+10/+15/+30 分加班、出勤狀態
-- 加班倍率（×1.0 / 1.34 / 1.67 / 2.0 / 自訂）、單日或整月四捨五入
-- 月底對帳單（可截圖、可複製文字）
-- 📸 AI 智慧辨識匯入班表（Gemini `gemini-2.5-flash`）＋ 免 Key 的 JSON 貼上模式，匯入前可逐列核對修改
-- 備份匯出 / 匯入
+## V2 核心功能
+- **底部 iOS 毛玻璃導覽列（4 大分頁）**：
+  - 📅 **【排班】**：精簡版「本月預估總薪資 + 全勤燈號」、常用班別印章列、互動月曆、點擊日期微調與分鐘級加班面板
+  - 💰 **【帳單】**：三大薪資拆解卡片、每日工時與加班費明細表、截圖專用對帳單與文字複製
+  - ⏰ **【提醒與小工具】**：上班前一天提醒 + 當日起床鬧鐘自動推算、Web Notification 推播、**一鍵匯出 `.ics` 手機原生行事曆雙鬧鐘（`VALARM`）**、**iOS Scriptable 桌面小工具連動中心**
+  - ⚙️ **【設定】**：基本時薪、加班倍率、小數點進位機制、全勤金額、AI 模型名稱自訂（預設 `gemini-3.8-flash`）、資料備份匯出/匯入
+- **無薪休息時間升級**：內建 `不扣除`、`0.5h`、`1h`、`1.5h`、`2h`，並提供 `+ 自訂時間` 自動新增為常駐快捷按鈕
+- **📸 多張手寫班表批次上傳與跨頁合併**：
+  - 支援一次選取或分次拍攝多張照片（第 1 頁、第 2 頁…縮圖預覽與單張移除）
+  - 一次傳送多張圖片給 Gemini API（`gemini-3.8-flash`），自動跨頁合併、去重、依日期排序
+  - 匯入前核對清單提供 **➕ 合併追加模式（預設，保留其他日期與已記加班）** 與 **🔄 整月覆蓋模式**
+- **防誤觸縮放 ＆ 類原生 PWA 體驗**：
+  - 鎖定 Viewport 縮放與開啟 iOS Web App 全螢幕模式
+  - 全域 `touch-action: manipulation`、表單字體 `>= 16px`、攔截雙指手勢與雙擊放大
 
 ## 部署到 GitHub + Vercel
-1. 在 GitHub 建立新 repository（例如 `shift-pay-app`）
-2. 把本資料夾的 `index.html`、`vercel.json`、`README.md` 推上去：
-   ```bash
-   git init
-   git add .
-   git commit -m "init: shift pay app"
-   git branch -M main
-   git remote add origin https://github.com/<你的帳號>/shift-pay-app.git
-   git push -u origin main
-   ```
-   （沒有安裝 Git 也可以在 GitHub 網頁上按 **Add file → Upload files** 直接拖曳上傳）
-3. 到 <https://vercel.com/new> → Import 這個 repo → Framework Preset 選 **Other** → 直接 **Deploy**（不需要 build 指令）
-4. 之後每次 push 到 `main`，Vercel 會自動重新部署
-
-## 注意
-- Gemini API Key 只存在你自己裝置的瀏覽器中，由前端直接呼叫 Google API，不會經過任何伺服器。請勿在公用電腦儲存 Key。
-- 換手機 / 換瀏覽器資料不會同步，請用「設定 → 匯出備份」轉移。
+1. 在 GitHub 建立新 repository（或更新現有 repo）
+2. 上傳 `index.html`、`vercel.json`、`README.md`
+3. 到 <https://vercel.com/new> → Import 這個 repo → Framework Preset 選 **Other** → 直接 **Deploy**
