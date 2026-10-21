@@ -910,9 +910,61 @@ function loadState() {
 }
 
 let state = loadState();
+let shiftSyncChannel = null;
+try {
+  if (typeof BroadcastChannel !== 'undefined') {
+    shiftSyncChannel = new BroadcastChannel('anti_broke_shift_sync');
+  }
+} catch (_) {}
+
+function pushShiftStateToAntiBrokeApp(isManual = false) {
+  try {
+    const ym = (typeof viewY !== 'undefined' && typeof viewM !== 'undefined')
+      ? `${viewY}-${String(viewM).padStart(2, '0')}`
+      : new Date().toISOString().slice(0, 7);
+    const payload = {
+      app: 'shiftpay-v2',
+      updatedAt: new Date().toISOString(),
+      month: ym,
+      state
+    };
+    localStorage.setItem('shiftpay.v2.bridge', JSON.stringify(payload));
+    if (shiftSyncChannel) {
+      shiftSyncChannel.postMessage({ type: 'SHIFT_STATE_UPDATED', payload });
+    }
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'SHIFT_STATE_UPDATED', payload }, '*');
+    }
+    const endpoints = [];
+    if (location.protocol.startsWith('http')) {
+      endpoints.push('/api/shift/sync');
+    }
+    if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+      endpoints.push('http://localhost:3088/api/shift/sync');
+    }
+    if (!location.hostname.includes('workers.dev')) {
+      endpoints.push('https://anti-broke-finance-app.mr-haibaoseal.workers.dev/api/shift/sync');
+    }
+    for (const url of endpoints) {
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawJsonPayload: payload,
+          autoSync: !isManual
+        })
+      }).catch(() => {});
+    }
+  } catch (_) {}
+}
+
 function save() {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
-  catch (e) { toast('⚠️ 儲存失敗：瀏覽器空間不足或停用 localStorage', 'error'); }
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    pushShiftStateToAntiBrokeApp(false);
+  } catch (e) {
+    toast('⚠️ 儲存失敗：瀏覽器空間不足或停用 localStorage', 'error');
+  }
 }
 
 const today = new Date();
@@ -2969,6 +3021,9 @@ function renderAll() {
 }
 loadSettingsForm();
 renderAll();
+if (state && state.shifts && Object.keys(state.shifts).length > 0) {
+  pushShiftStateToAntiBrokeApp(false);
+}
 </script>
 </body>
 </html>
