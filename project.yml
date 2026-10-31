@@ -11,8 +11,8 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
-    MARKETING_VERSION: "3.0.0"
-    CURRENT_PROJECT_VERSION: "300"
+    MARKETING_VERSION: "3.0.1"
+    CURRENT_PROJECT_VERSION: "301"
     TARGETED_DEVICE_FAMILY: "1"
     INFOPLIST_KEY_CFBundleDisplayName: "打工薪水帳"
     CODE_SIGN_IDENTITY: ""
@@ -28,6 +28,18 @@ targets:
     sources:
       - path: ios/Shared
       - path: ios/ShiftPayApp
+    info:
+      path: ios/ShiftPayApp/Info.plist
+      properties:
+        CFBundleDisplayName: "打工薪水帳"
+        NSCalendarsFullAccessUsageDescription: "打工薪水帳需要行事曆權限，以便自動將您的排班表與雙重起床提醒同步寫入 iPhone 原生行事曆（免手動匯出 .ics）。"
+        NSCalendarsWriteOnlyAccessUsageDescription: "打工薪水帳需要行事曆權限，以便自動將您的排班表與起床提醒寫入 iPhone 行事曆。"
+        NSCalendarsUsageDescription: "打工薪水帳需要行事曆權限，以便自動將您的排班表與起床提醒寫入 iPhone 行事曆。"
+        NSRemindersFullAccessUsageDescription: "打工薪水帳需要提醒事項權限，以便設定上班前一天與當日起床提醒。"
+        NSCameraUsageDescription: "打工薪水帳需要相機權限，以便直接拍攝店內手寫排班表進行 AI 智慧辨識。"
+        NSPhotoLibraryUsageDescription: "打工薪水帳需要相簿權限，以便選取多張手寫排班表照片進行跨頁 AI 合併辨識，以及儲存月底高清對帳單圖片。"
+        NSPhotoLibraryAddUsageDescription: "打工薪水帳需要相簿權限，以便將月底薪資核對單圖片儲存至您的手機相簿。"
+        NSSupportsLiveActivities: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mrhaibaoseal.shiftpay
@@ -40,13 +52,6 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UIUserInterfaceStyle: Dark
-        INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription: "打工薪水帳需要行事曆權限，以便自動將您的排班表與雙重起床提醒同步寫入 iPhone 原生行事曆（免手動匯出 .ics）。"
-        INFOPLIST_KEY_NSCalendarsWriteOnlyAccessUsageDescription: "打工薪水帳需要行事曆權限，以便自動將您的排班表與起床提醒寫入 iPhone 行事曆。"
-        INFOPLIST_KEY_NSRemindersFullAccessUsageDescription: "打工薪水帳需要提醒事項權限，以便設定上班前一天與當日起床提醒。"
-        INFOPLIST_KEY_NSCameraUsageDescription: "打工薪水帳需要相機權限，以便直接拍攝店內手寫排班表進行 AI 智慧辨識。"
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "打工薪水帳需要相簿權限，以便選取多張手寫排班表照片進行跨頁 AI 合併辨識，以及儲存月底高清對帳單圖片。"
-        INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: "打工薪水帳需要相簿權限，以便將月底薪資核對單圖片儲存至您的手機相簿。"
-        INFOPLIST_KEY_NSSupportsLiveActivities: YES
         SWIFT_EMIT_LOC_STRINGS: YES
     dependencies:
       - target: ShiftPayWidgetExtension
@@ -59,12 +64,17 @@ targets:
     sources:
       - path: ios/Shared
       - path: ios/ShiftPayWidget
+    info:
+      path: ios/ShiftPayWidget/Info.plist
+      properties:
+        CFBundleDisplayName: "打工薪水帳小工具"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.mrhaibaoseal.shiftpay.widget
         PRODUCT_NAME: ShiftPayWidgetExtension
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "打工薪水帳小工具"
-        INFOPLIST_KEY_NSExtensionPointIdentifier: com.apple.widgetkit-extension
         SKIP_INSTALL: YES
         SWIFT_EMIT_LOC_STRINGS: YES

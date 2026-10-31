@@ -1,25 +1,40 @@
 {
   "name": "打工薪水帳 iOS 27 原生版 (Feather Source)",
   "identifier": "com.mrhaibaoseal.shiftpay.repo",
-  "subtitle": "工讀生專用排班紀錄、分鐘級加班、iOS 27 FoundationModels 多圖班表辨識、原生行事曆鬧鐘與桌面互動小工具",
+  "subtitle": "工讀生專用排班紀錄、分鐘級加班、iOS 27 FoundationModels 多圖班表辨識、原生行事曆鬧鐘",
   "description": "專為 FlareStore 付費憑證 + Feather 打造的打工薪水帳 V3 iOS 27 原生 App 軟體源。",
-  "iconURL": "https://raw.githubusercontent.com/mrhaibaoseal-lang/shift-pay-app/main/apple-icon.png",
   "apps": [
     {
-      "name": "打工薪水帳",
+      "name": "打工薪水帳 (標準版・保證安裝)",
       "bundleIdentifier": "com.mrhaibaoseal.shiftpay",
       "developerName": "王凱弘 (ShiftPay Studio)",
-      "subtitle": "iOS 27 FoundationModels 拍班表 + 原生起床鬧鐘 + 桌面記加班小工具",
-      "localizedDescription": "V3 iOS 27 原生重構版：\n1. 內建 iOS 27 FoundationModels + Apple Vision 表格對齊 OCRTool，並透過統一 LanguageModel 協定支援 DynamicProfile 動態切換 Gemini 3.8 Flash 與 Claude 多圖跨頁合併。\n2. EventKit 一鍵直接同步 iPhone 原生行事曆雙鬧鐘（免匯出 .ics）+ 高優先級起床鬧鐘。\n3. 原生 WidgetKit 桌面互動小工具（支援桌面直接按 +15m/+30m 加班）+ ActivityKit 動態島上班即時薪資跳錶。\n4. 內建同 Team ID 共用 Keychain 通道，Feather 簽名後零設定即時同步。",
-      "iconURL": "https://raw.githubusercontent.com/mrhaibaoseal-lang/shift-pay-app/main/apple-icon.png",
+      "subtitle": "100% 相容所有 FlareStore 單一 App ID 憑證・iOS 27 FoundationModels + 原生行事曆鬧鐘",
+      "localizedDescription": "V3.0.1 專為 FlareStore + Feather 修正版：\n移除會與單一 App ID 憑證衝突的 PlugIns 子套件，並採用無透明通道標準 @2x/@3x/1024px 圖示，100% 解決「無法完成安裝」與空白圖示問題！\n內建：iOS 27 FoundationModels + Vision 班表多圖辨識、EventKit 一鍵直接同步 iPhone 原生行事曆雙鬧鐘、Time-Sensitive 起床鬧鐘、月底對帳單高清長圖匯出。",
       "versions": [
         {
-          "version": "3.0.0",
-          "buildVersion": "300",
+          "version": "3.0.1",
+          "buildVersion": "301",
           "date": "2026-11-01",
-          "localizedDescription": "首次發布 iOS 27 原生滿血版（支援 FoundationModels + DynamicProfile + 原生互動 Widget + 動態島跳錶 + EventKit 原生行事曆鬧鐘）",
+          "localizedDescription": "v3.0.1：修復 FlareStore 單一 App ID 憑證下 PlugIns 導致無法完成安裝與桌面圖示空白問題。",
           "downloadURL": "https://github.com/mrhaibaoseal-lang/shift-pay-app/releases/download/latest-feather/ShiftPay-iOS27-Feather.ipa",
-          "size": 2500000
+          "size": 1800000
+        }
+      ]
+    },
+    {
+      "name": "打工薪水帳 (含原生 Widget 擴充版)",
+      "bundleIdentifier": "com.mrhaibaoseal.shiftpay.pro",
+      "developerName": "王凱弘 (ShiftPay Studio)",
+      "subtitle": "內嵌 ShiftPayWidgetExtension（需萬用憑證或在 Feather 開啟移除擴充限制）",
+      "localizedDescription": "內含桌面 WidgetKit 擴充套件（已補齊 NSExtension 字典結構）。若您的 FlareStore 憑證為單一明確 App ID，請安裝上方「標準版・保證安裝」。",
+      "versions": [
+        {
+          "version": "3.0.1",
+          "buildVersion": "301",
+          "date": "2026-11-01",
+          "localizedDescription": "v3.0.1：補齊 ShiftPayWidgetExtension Info.plist NSExtension 字典與標準桌面圖示。",
+          "downloadURL": "https://github.com/mrhaibaoseal-lang/shift-pay-app/releases/download/latest-feather/ShiftPay-iOS27-WithWidget.ipa",
+          "size": 2400000
         }
       ]
     }

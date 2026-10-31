@@ -27,6 +27,39 @@ extension ToolsTabView {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Color(hex: "#64D2FF"))
             }
+
+            HStack(spacing: 8) {
+                Button {
+                    if let data = try? JSONEncoder().encode(payload),
+                       let jsonStr = String(data: data, encoding: .utf8) {
+                        UIPasteboard.general.string = jsonStr
+                        HapticsManager.shared.success()
+                        vm.showToast("✅ 已複製班表 JSON 數據（支援 Scriptable 小工具秒同步）！", style: .success)
+                    }
+                } label: {
+                    Label("一鍵複製小工具 JSON", systemImage: "doc.on.doc.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(.white)
+                }
+
+                Button {
+                    let ics = ICSExportGenerator.generateMonthICS(state: vm.state, year: vm.viewYear, month: vm.viewMonth)
+                    UIPasteboard.general.string = ics
+                    HapticsManager.shared.success()
+                    vm.showToast("📋 已複製 .ics 行事曆內容至剪貼簿", style: .success)
+                } label: {
+                    Label("備用複製 .ics", systemImage: "calendar")
+                        .font(.system(size: 11, weight: .semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+            }
+            .padding(.top, 2)
         }
         .padding(12)
         .background(.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 16))
