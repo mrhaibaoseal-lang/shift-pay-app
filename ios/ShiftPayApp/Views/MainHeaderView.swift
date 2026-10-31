@@ -67,6 +67,7 @@ extension MainRootView {
                     .font(.system(size: 18, weight: .heavy))
                     .monospacedDigit()
                     .foregroundStyle(.white)
+                    .contentTransition(.numericText())
                 Button { vm.jumpToToday() } label: {
                     Text("今天")
                         .font(.system(size: 12, weight: .semibold))
@@ -85,5 +86,25 @@ extension MainRootView {
                     .foregroundStyle(.white)
             }
         }
+        .contentShape(Rectangle())
+        .horizontalMonthSwipe(vm: vm)
+    }
+}
+
+public extension View {
+    func horizontalMonthSwipe(vm: ShiftPayViewModel) -> some View {
+        self.simultaneousGesture(
+            DragGesture(minimumDistance: 28, coordinateSpace: .local)
+                .onEnded { value in
+                    let dx = value.translation.width
+                    let dy = value.translation.height
+                    guard abs(dx) > abs(dy) * 1.35, abs(dx) > 42 else { return }
+                    if dx < 0 {
+                        vm.changeMonth(delta: 1)
+                    } else {
+                        vm.changeMonth(delta: -1)
+                    }
+                }
+        )
     }
 }

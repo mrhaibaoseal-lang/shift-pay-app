@@ -147,5 +147,5 @@ jobs:
           gh release create latest-feather \
             ShiftPay-iOS27-Feather.ipa \
             ShiftPay-iOS27-WithWidget.ipa \
-            --title "打工薪水帳 V3.0.3 (iOS 27 原生版 - 鍵盤收合與數字輸入優化版)" \
-            --notes "v3.0.3 更新：修復數字與文字鍵盤輸入後無法關閉的問題（支援點擊任意空白處收起鍵盤、鍵盤上方「完成 ✓」工具列按鈕、滑動收起鍵盤，以及單日加班/休息分鐘直接輸入）。"
+            --title "打工薪水帳 V3.0.4 (iOS 27 原生版 - 原生連環鬧鐘 & 滑動切月版)" \
+            --notes "v3.0.4 更新：1. 移除 Scriptable 複製 JSON 與行事曆同步，全面採用原生 WidgetKit 小工具與 iOS 原生連環起床鬧鐘（支援鎖定畫面「我已起床」與「貪睡 5 分鐘」） 2. 首頁月曆與薪資卡支援左右滑動切換月份 3. 完整支援點擊空白處與鍵盤上方「完成 ✓」收起數字鍵盤。"

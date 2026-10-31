@@ -8,8 +8,10 @@ struct ScheduleTabView: View {
         ScrollView {
             VStack(spacing: 14) {
                 salaryHeaderCard(comp: comp)
+                    .horizontalMonthSwipe(vm: vm)
                 stampToolbarSection
                 calendarGridCard
+                    .horizontalMonthSwipe(vm: vm)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 110)

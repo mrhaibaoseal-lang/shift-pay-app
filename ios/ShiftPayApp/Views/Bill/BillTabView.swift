@@ -15,6 +15,7 @@ struct BillTabView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 110)
         }
+        .horizontalMonthSwipe(vm: vm)
         .sheet(isPresented: $vm.showStatementPreviewSheet) {
             BillStatementSheet(vm: vm)
                 .presentationDetents([.large])

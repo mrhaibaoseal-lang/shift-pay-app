@@ -70,6 +70,14 @@ struct MainRootView: View {
                 .presentationDragIndicator(.visible)
         }
         .dismissKeyboardOnTap()
+        .onAppear {
+            AlarmNotificationService.shared.configureNotificationCategories()
+            if vm.state.settings.reminders.autoScheduleNotifications {
+                Task {
+                    _ = await AlarmNotificationService.shared.syncUpcomingNotifications(state: vm.state)
+                }
+            }
+        }
     }
 }
 

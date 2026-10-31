@@ -43,6 +43,25 @@ public struct QueryMonthlyPayIntent: AppIntent {
     }
 }
 
+/// 取得下一班建議起床鬧鐘時間（可於 iOS 捷徑直接串接「建立鬧鐘」寫入系統時鐘 App）
+public struct GetNextWakeAlarmIntent: AppIntent {
+    public static let title: LocalizedStringResource = "取得下一班起床鬧鐘時間"
+    public static let description = IntentDescription("回傳下一班或明日排班的建議起床時間（HH:MM），可直接串接 iOS 內建「建立鬧鐘」動作自動新增系統時鐘鬧鐘。")
+
+    public init() {}
+
+    public func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
+        let payload = SharedStore.shared.loadWidgetPayload()
+        if let nx = payload.nextShift {
+            return .result(
+                value: nx.wakeTime,
+                dialog: "下一班是\(nx.label) \(nx.time)（\(nx.name)），建議起床鬧鐘時間為 \(nx.wakeTime)。"
+            )
+        }
+        return .result(value: "", dialog: "近期尚無排班，不需設定起床鬧鐘。")
+    }
+}
+
 public struct ShiftPayAppShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -54,6 +73,15 @@ public struct ShiftPayAppShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "查詢本月薪資與起床時間",
             systemImageName: "dollarsign.circle.fill"
+        )
+        AppShortcut(
+            intent: GetNextWakeAlarmIntent(),
+            phrases: [
+                "用\(.applicationName)取得起床鬧鐘時間",
+                "用\(.applicationName)同步打工起床鬧鐘"
+            ],
+            shortTitle: "取得下一班起床鬧鐘時間",
+            systemImageName: "alarm.fill"
         )
         AppShortcut(
             intent: AddQuickOvertimeIntent(),

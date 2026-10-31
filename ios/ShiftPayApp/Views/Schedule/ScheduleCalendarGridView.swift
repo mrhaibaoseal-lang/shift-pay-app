@@ -38,7 +38,7 @@ extension ScheduleTabView {
             }
 
             HStack {
-                Text("💡 點擊已排班日期可微調上下班時間、扣除休息或記錄分鐘級加班")
+                Text("💡 左右滑動月曆可切換月份 · 點擊日期可微調時間、休息或記錄加班")
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.4))
                 Spacer()
@@ -47,6 +47,7 @@ extension ScheduleTabView {
         }
         .padding(12)
         .background(Color(hex: "#1C1C1E"), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .contentShape(Rectangle())
     }
 
     private func calendarDayCell(day: Int, dateKey: String, weekday: Int, shift: ShiftRecord?, isToday: Bool) -> some View {

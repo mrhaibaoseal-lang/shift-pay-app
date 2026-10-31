@@ -28,36 +28,18 @@ extension ToolsTabView {
                     .foregroundStyle(Color(hex: "#64D2FF"))
             }
 
-            HStack(spacing: 8) {
-                Button {
-                    if let data = try? JSONEncoder().encode(payload),
-                       let jsonStr = String(data: data, encoding: .utf8) {
-                        UIPasteboard.general.string = jsonStr
-                        HapticsManager.shared.success()
-                        vm.showToast("✅ 已複製班表 JSON 數據（支援 Scriptable 小工具秒同步）！", style: .success)
-                    }
-                } label: {
-                    Label("一鍵複製小工具 JSON", systemImage: "doc.on.doc.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-                        .foregroundStyle(.white)
-                }
-
-                Button {
-                    let ics = ICSExportGenerator.generateMonthICS(state: vm.state, year: vm.viewYear, month: vm.viewMonth)
-                    UIPasteboard.general.string = ics
-                    HapticsManager.shared.success()
-                    vm.showToast("📋 已複製 .ics 行事曆內容至剪貼簿", style: .success)
-                } label: {
-                    Label("備用複製 .ics", systemImage: "calendar")
-                        .font(.system(size: 11, weight: .semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
+            Button {
+                SharedStore.shared.saveState(vm.state, viewYear: vm.viewYear, viewMonth: vm.viewMonth)
+                SharedStore.shared.reloadAllWidgets()
+                HapticsManager.shared.success()
+                vm.showToast("✅ 已同步刷新 iOS 原生桌面 Widget 小工具！", style: .success)
+            } label: {
+                Label("立即同步刷新原生桌面小工具", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 11, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                    .foregroundStyle(.white.opacity(0.9))
             }
             .padding(.top, 2)
         }
@@ -67,8 +49,14 @@ extension ToolsTabView {
 
     func upcoming7DaysCard(up: PayrollEngine.UpcomingScheduleSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("📅 未來 7 天班表與起床鬧鐘一覽")
-                .font(.system(size: 14, weight: .bold))
+            HStack {
+                Text("📅 未來 7 天班表與原生起床鬧鐘一覽")
+                    .font(.system(size: 14, weight: .bold))
+                Spacer()
+                Text(vm.state.settings.reminders.wakeEnabled ? "🔔 鬧鐘自動連動中" : "🔕 鬧鐘已關閉")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(vm.state.settings.reminders.wakeEnabled ? Color(hex: "#30D158") : .white.opacity(0.4))
+            }
 
             ForEach(up.days7) { item in
                 HStack {

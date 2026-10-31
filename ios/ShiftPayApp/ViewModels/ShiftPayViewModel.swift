@@ -56,11 +56,6 @@ public final class ShiftPayViewModel {
                 _ = await AlarmNotificationService.shared.syncUpcomingNotifications(state: state)
             }
         }
-        if state.settings.reminders.autoSyncCalendar {
-            Task {
-                _ = try? await CalendarSyncService.shared.syncMonthToNativeCalendar(state: state, year: viewYear, month: viewMonth)
-            }
-        }
     }
 
     public func showToast(_ text: String, style: ToastStyle = .normal) {
@@ -84,16 +79,20 @@ public final class ShiftPayViewModel {
         var y = viewYear
         if m < 1 { m = 12; y -= 1 }
         if m > 12 { m = 1; y += 1 }
-        viewYear = y
-        viewMonth = m
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+            viewYear = y
+            viewMonth = m
+        }
         HapticsManager.shared.lightTap()
     }
 
     public func jumpToToday() {
         let now = Date()
         let cal = Calendar(identifier: .gregorian)
-        viewYear = cal.component(.year, from: now)
-        viewMonth = cal.component(.month, from: now)
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.85)) {
+            viewYear = cal.component(.year, from: now)
+            viewMonth = cal.component(.month, from: now)
+        }
         HapticsManager.shared.lightTap()
         showToast("已回到本月")
     }
