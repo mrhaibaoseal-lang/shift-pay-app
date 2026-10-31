@@ -1,3 +1,16 @@
+# 💰 打工薪水帳 V3｜iOS 27 原生 App (Feather 滿血版) & Web V2
+
+本儲存庫同時提供 **iOS 27 原生 Swift App（專為 FlareStore 付費憑證 + Feather 簽名優化）** 與 **Web V2 單頁應用（`index.html`）**，兩者支援 **100% 雙向無痛備份匯入/匯出（`shiftpay.v1` JSON 相容）**。
+
+## 📱 iOS 27 原生版（V3）核心亮點
+- **🧠 iOS 27 `FoundationModels` + `Vision` + `DynamicProfile` 班表視讀引擎**：支援 Apple 裝置端離線辨識、Vision 表格座標對齊（`VisionOCRTool`）、以及透過統一 `ShiftLanguageModel` 協定動態切換 `gemini-3.8-flash` 與 `Claude` 多圖跨頁合併。
+- **⏰ 原生 `EventKit` 行事曆自動同步 + 高優先級起床鬧鐘**：一鍵直接寫入 iPhone 原生「💰 打工班表」日曆（內建前一晚 + 起床雙 `EKAlarm`），免手動匯出 `.ics`。
+- **🧩 原生 `WidgetKit` 互動小工具 + `ActivityKit` 動態島跳錶**：透過同 Team ID 共用 Keychain 通道，Feather 簽名後零設定秒同步；支援在桌面小工具直接按 **`⚡+15m / ⚡+30m`** 記加班！
+- **🚀 Feather 軟體源網址**：`https://raw.githubusercontent.com/mrhaibaoseal-lang/shift-pay-app/main/feather-repo.json`
+
+---
+
+
 # 💰 打工薪水帳 V2｜工讀生排班紀錄與精準薪資計算
 
 單一 `index.html` 打造的 Mobile-First Web App（HTML5 + Tailwind CSS + JavaScript + FontAwesome），資料全部存在瀏覽器 `localStorage`（向下相容 V1 `shiftpay.v1`）。
