@@ -21,14 +21,23 @@ struct StampManagerSheet: View {
                 }
                 .padding(16)
             }
-            .background(Color(hex: "#1C1C1E").ignoresSafeArea())
+            .scrollDismissesKeyboard(.interactively)
+            .background(
+                Color(hex: "#1C1C1E")
+                    .ignoresSafeArea()
+                    .onTapGesture { KeyboardDismissManager.dismiss() }
+            )
             .navigationTitle("🏷️ 管理常用班別印章")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("關閉") { dismiss() }
+                    Button("關閉") {
+                        KeyboardDismissManager.dismiss()
+                        dismiss()
+                    }
                 }
             }
+            .dismissKeyboardOnTap()
         }
     }
 
@@ -41,6 +50,7 @@ struct StampManagerSheet: View {
                 .foregroundStyle(.white)
 
             TextField("班別名稱（例如：早班、晚班、打烊班）", text: $name)
+                .submitLabel(.done)
                 .padding(11)
                 .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
 
@@ -48,22 +58,35 @@ struct StampManagerSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("上班時間").font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
                     TextField("09:00", text: $start)
+                        .submitLabel(.done)
                         .padding(10)
                         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
                         .monospacedDigit()
+                        .onChange(of: start) { _, val in
+                            let f = PayrollEngine.autoFormatTimeInput(val)
+                            if f != val { start = f }
+                        }
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text("下班時間").font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
                     TextField("17:00", text: $end)
+                        .submitLabel(.done)
                         .padding(10)
                         .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
                         .monospacedDigit()
+                        .onChange(of: end) { _, val in
+                            let f = PayrollEngine.autoFormatTimeInput(val)
+                            if f != val { end = f }
+                        }
                 }
             }
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
                 ForEach(breakOpts, id: \.self) { mins in
-                    Button { breakMin = mins } label: {
+                    Button {
+                        KeyboardDismissManager.dismiss()
+                        breakMin = mins
+                    } label: {
                         Text(PayrollEngine.formatBreakLabel(mins))
                             .font(.system(size: 12, weight: .semibold))
                             .frame(maxWidth: .infinity)
@@ -77,10 +100,12 @@ struct StampManagerSheet: View {
             HStack(spacing: 8) {
                 TextField("自訂休息分鐘 (如 45)", text: $customBreakInput)
                     .keyboardType(.numberPad)
+                    .submitLabel(.done)
                     .padding(9)
                     .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
                 Button("新增常駐按鈕") {
-                    if let val = Int(customBreakInput), val > 0 {
+                    KeyboardDismissManager.dismiss()
+                    if let val = Int(customBreakInput.trimmingCharacters(in: .whitespacesAndNewlines)), val > 0 {
                         vm.addCustomBreakMinutes(val)
                         breakMin = val
                         customBreakInput = ""

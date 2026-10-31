@@ -18,6 +18,9 @@ struct MainRootView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
+                .onTapGesture {
+                    KeyboardDismissManager.dismiss()
+                }
 
             VStack(spacing: 0) {
                 topHeaderBar
@@ -66,6 +69,7 @@ struct MainRootView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .dismissKeyboardOnTap()
     }
 }
 

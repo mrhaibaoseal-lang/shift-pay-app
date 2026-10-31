@@ -4,6 +4,7 @@ struct DayEditorSheet: View {
     @Bindable var vm: ShiftPayViewModel
     let dateKey: String
     @Environment(\.dismiss) var dismiss
+    @State var customBreakInput: String = ""
 
     var shift: ShiftRecord? {
         vm.state.shifts[dateKey]
@@ -26,15 +27,24 @@ struct DayEditorSheet: View {
                 }
                 .padding(16)
             }
-            .background(Color(hex: "#1C1C1E").ignoresSafeArea())
+            .scrollDismissesKeyboard(.interactively)
+            .background(
+                Color(hex: "#1C1C1E")
+                    .ignoresSafeArea()
+                    .onTapGesture { KeyboardDismissManager.dismiss() }
+            )
             .navigationTitle(formattedDateTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }
-                        .fontWeight(.bold)
+                    Button("完成") {
+                        KeyboardDismissManager.dismiss()
+                        dismiss()
+                    }
+                    .fontWeight(.bold)
                 }
             }
+            .dismissKeyboardOnTap()
         }
     }
 

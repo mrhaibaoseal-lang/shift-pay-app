@@ -135,6 +135,20 @@ public enum PayrollEngine {
         return text.range(of: pattern, options: .regularExpression) != nil
     }
 
+    public static func autoFormatTimeInput(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let digitsOnly = trimmed.filter(\.isNumber)
+        if digitsOnly.count == 4 && !trimmed.contains(":") {
+            let h = String(digitsOnly.prefix(2))
+            let m = String(digitsOnly.suffix(2))
+            let candidate = "\(h):\(m)"
+            if isValidHHMM(candidate) {
+                return candidate
+            }
+        }
+        return trimmed
+    }
+
     public static func isValidDateKey(_ text: String) -> Bool {
         let pattern = #"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$"#
         return text.range(of: pattern, options: .regularExpression) != nil

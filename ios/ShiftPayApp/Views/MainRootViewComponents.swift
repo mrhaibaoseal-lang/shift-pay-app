@@ -58,6 +58,7 @@ extension MainRootView {
     private func tabBarItem(tab: ShiftPayViewModel.AppTab, icon: String, title: String) -> some View {
         let selected = (vm.activeTab == tab)
         return Button {
+            KeyboardDismissManager.dismiss()
             HapticsManager.shared.lightTap()
             withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
                 vm.activeTab = tab

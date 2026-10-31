@@ -75,9 +75,22 @@ extension SettingsTabView {
                 }
             }
             .padding(16)
-            .background(Color(hex: "#1C1C1E").ignoresSafeArea())
+            .background(
+                Color(hex: "#1C1C1E")
+                    .ignoresSafeArea()
+                    .onTapGesture { KeyboardDismissManager.dismiss() }
+            )
             .navigationTitle("匯入 JSON 備份")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("關閉") {
+                        KeyboardDismissManager.dismiss()
+                        showImportJSONSheet = false
+                    }
+                }
+            }
+            .dismissKeyboardOnTap()
         }
     }
 }

@@ -79,11 +79,13 @@ extension StampManagerSheet {
     }
 
     func resetForm() {
+        KeyboardDismissManager.dismiss()
         editingId = nil; name = ""; start = "09:00"; end = "17:00"; breakMin = 0
         color = ShiftPayConstants.palette[vm.state.stamps.count % ShiftPayConstants.palette.count]
     }
 
     func saveStamp() {
+        KeyboardDismissManager.dismiss()
         let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanName.isEmpty else { vm.showToast("請輸入班別名稱", style: .error); return }
         guard PayrollEngine.isValidHHMM(start), PayrollEngine.isValidHHMM(end) else {

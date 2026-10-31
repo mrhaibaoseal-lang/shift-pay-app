@@ -98,6 +98,7 @@ extension PhotoImportSheet {
                 .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
 
             Button {
+                KeyboardDismissManager.dismiss()
                 do {
                     extractedRows = try ScheduleJSONParser.parseRows(from: manualJSONText, year: targetYear, month: targetMonth)
                     statusText = "✅ 解析成功，共 \(extractedRows.count) 筆排班，請於下方核對。"

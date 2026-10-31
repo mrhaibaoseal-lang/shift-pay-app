@@ -22,12 +22,14 @@ extension DayEditorSheet {
                     TextField("09:00", text: Binding(
                         get: { sh.start },
                         set: { val in
-                            if PayrollEngine.isValidHHMM(val) {
-                                vm.state.shifts[dateKey]?.start = val
+                            let formatted = PayrollEngine.autoFormatTimeInput(val)
+                            vm.state.shifts[dateKey]?.start = formatted
+                            if PayrollEngine.isValidHHMM(formatted) {
                                 vm.save()
                             }
                         }
                     ))
+                    .submitLabel(.done)
                     .textFieldStyle(.roundedBorder)
                     .monospacedDigit()
                 }
@@ -36,12 +38,14 @@ extension DayEditorSheet {
                     TextField("17:00", text: Binding(
                         get: { sh.end },
                         set: { val in
-                            if PayrollEngine.isValidHHMM(val) {
-                                vm.state.shifts[dateKey]?.end = val
+                            let formatted = PayrollEngine.autoFormatTimeInput(val)
+                            vm.state.shifts[dateKey]?.end = formatted
+                            if PayrollEngine.isValidHHMM(formatted) {
                                 vm.save()
                             }
                         }
                     ))
+                    .submitLabel(.done)
                     .textFieldStyle(.roundedBorder)
                     .monospacedDigit()
                 }
@@ -50,6 +54,7 @@ extension DayEditorSheet {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3), spacing: 6) {
                 ForEach(breakOptions, id: \.self) { mins in
                     Button {
+                        KeyboardDismissManager.dismiss()
                         vm.state.shifts[dateKey]?.breakMin = mins
                         HapticsManager.shared.lightTap()
                         vm.save()
@@ -62,6 +67,30 @@ extension DayEditorSheet {
                             .foregroundStyle(.white)
                     }
                 }
+            }
+
+            HStack(spacing: 8) {
+                TextField("自訂休息分鐘 (如 45)", text: $customBreakInput)
+                    .keyboardType(.numberPad)
+                    .submitLabel(.done)
+                    .font(.system(size: 12))
+                    .padding(9)
+                    .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                Button("套用並設為常駐") {
+                    KeyboardDismissManager.dismiss()
+                    if let val = Int(customBreakInput.trimmingCharacters(in: .whitespacesAndNewlines)), val > 0 {
+                        vm.addCustomBreakMinutes(val)
+                        vm.state.shifts[dateKey]?.breakMin = val
+                        vm.save()
+                        customBreakInput = ""
+                        HapticsManager.shared.lightTap()
+                    }
+                }
+                .font(.system(size: 12, weight: .bold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(Color.blue.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(Color(hex: "#64D2FF"))
             }
         }
         .padding(14)
@@ -87,6 +116,7 @@ extension DayEditorSheet {
             HStack(spacing: 6) {
                 ForEach([10, 15, 30, 60], id: \.self) { addMin in
                     Button {
+                        KeyboardDismissManager.dismiss()
                         vm.state.shifts[dateKey]?.otMin = max(0, sh.otMin + addMin)
                         HapticsManager.shared.lightTap()
                         vm.save()
@@ -100,6 +130,7 @@ extension DayEditorSheet {
                     }
                 }
                 Button {
+                    KeyboardDismissManager.dismiss()
                     vm.state.shifts[dateKey]?.otMin = 0
                     HapticsManager.shared.lightTap()
                     vm.save()
@@ -113,20 +144,44 @@ extension DayEditorSheet {
                 }
             }
 
-            Stepper(
-                "累計加班：\(sh.otMin) 分鐘",
-                value: Binding(
+            HStack(spacing: 8) {
+                Text("直接輸入加班")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.7))
+                TextField("0", value: Binding(
                     get: { sh.otMin },
                     set: { newVal in
-                        vm.state.shifts[dateKey]?.otMin = max(0, newVal)
+                        vm.state.shifts[dateKey]?.otMin = max(0, min(720, newVal))
                         vm.save()
                     }
-                ),
-                in: 0...720,
-                step: 5
-            )
-            .font(.system(size: 13, weight: .bold))
-            .monospacedDigit()
+                ), format: .number)
+                .keyboardType(.numberPad)
+                .submitLabel(.done)
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .multilineTextAlignment(.center)
+                .padding(.vertical, 7)
+                .padding(.horizontal, 10)
+                .frame(width: 78)
+                .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                Text("分鐘")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.6))
+                Spacer()
+                Stepper(
+                    "",
+                    value: Binding(
+                        get: { sh.otMin },
+                        set: { newVal in
+                            KeyboardDismissManager.dismiss()
+                            vm.state.shifts[dateKey]?.otMin = max(0, newVal)
+                            vm.save()
+                        }
+                    ),
+                    in: 0...720,
+                    step: 5
+                )
+                .labelsHidden()
+            }
         }
         .padding(14)
         .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))

@@ -147,5 +147,5 @@ jobs:
           gh release create latest-feather \
             ShiftPay-iOS27-Feather.ipa \
             ShiftPay-iOS27-WithWidget.ipa \
-            --title "打工薪水帳 V3.0.1 (iOS 27 原生版 - Feather 修正版)" \
-            --notes "提供兩個版本：1. ShiftPay-iOS27-Feather.ipa（推薦預設：純單一 App Bundle，100% 相容所有 FlareStore 單一 App ID 憑證，保證安裝秒開並顯示桌面圖示） 2. ShiftPay-iOS27-WithWidget.ipa（進階版：含 ShiftPayWidgetExtension.appex 原生小工具，已補齊 NSExtension 字典，適合萬用字元憑證）"
+            --title "打工薪水帳 V3.0.3 (iOS 27 原生版 - 鍵盤收合與數字輸入優化版)" \
+            --notes "v3.0.3 更新：修復數字與文字鍵盤輸入後無法關閉的問題（支援點擊任意空白處收起鍵盤、鍵盤上方「完成 ✓」工具列按鈕、滑動收起鍵盤，以及單日加班/休息分鐘直接輸入）。"

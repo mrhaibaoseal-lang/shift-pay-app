@@ -41,7 +41,12 @@ struct PhotoImportSheet: View {
                 }
                 .padding(16)
             }
-            .background(Color(hex: "#1C1C1E").ignoresSafeArea())
+            .scrollDismissesKeyboard(.interactively)
+            .background(
+                Color(hex: "#1C1C1E")
+                    .ignoresSafeArea()
+                    .onTapGesture { KeyboardDismissManager.dismiss() }
+            )
             .navigationTitle("📸 多圖 AI 智慧辨識班表")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
@@ -50,9 +55,13 @@ struct PhotoImportSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("關閉") { dismiss() }
+                    Button("關閉") {
+                        KeyboardDismissManager.dismiss()
+                        dismiss()
+                    }
                 }
             }
+            .dismissKeyboardOnTap()
         }
     }
 

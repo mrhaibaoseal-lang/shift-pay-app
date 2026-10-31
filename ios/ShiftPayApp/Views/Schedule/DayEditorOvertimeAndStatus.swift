@@ -59,6 +59,7 @@ extension DayEditorSheet {
                     vm.save()
                 }
             ))
+            .submitLabel(.done)
             .padding(12)
             .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
 

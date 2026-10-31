@@ -16,6 +16,8 @@ struct ToolsTabView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 110)
         }
+        .scrollDismissesKeyboard(.interactively)
+        .dismissKeyboardOnTap()
     }
 
     private func heroWakeAlarmCard(up: PayrollEngine.UpcomingScheduleSummary) -> some View {
@@ -96,6 +98,7 @@ struct ToolsTabView: View {
                 ForEach([45, 60, 90, 120], id: \.self) { lead in
                     let active = (vm.state.settings.reminders.wakeLeadMin == lead)
                     Button {
+                        KeyboardDismissManager.dismiss()
                         vm.state.settings.reminders.wakeLeadMin = lead
                         HapticsManager.shared.lightTap()
                         vm.save()
@@ -109,6 +112,26 @@ struct ToolsTabView: View {
                             .foregroundStyle(.white)
                     }
                 }
+            }
+
+            HStack(spacing: 8) {
+                Text("自訂提前")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.55))
+                TextField("90", value: $vm.state.settings.reminders.wakeLeadMin, format: .number)
+                    .keyboardType(.numberPad)
+                    .submitLabel(.done)
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .multilineTextAlignment(.center)
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 10)
+                    .frame(width: 78)
+                    .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                    .onChange(of: vm.state.settings.reminders.wakeLeadMin) { _, _ in vm.save() }
+                Text("分鐘起床")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.55))
+                Spacer()
             }
 
             calendarAndNotificationButtons
