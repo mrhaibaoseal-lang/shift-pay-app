@@ -4,3 +4,17 @@ build/
 DerivedData/
 .tmp/
 .DS_Store
+
+# 嚴格封鎖憑證與私鑰檔案 (Prevent accidental commit of signing certificates)
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.crt
+*.key
+*.pem
+secrets/
+.secrets/
+certs/
+

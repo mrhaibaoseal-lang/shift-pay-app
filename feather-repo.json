@@ -12,10 +12,10 @@
       "localizedDescription": "V3.0.1 專為 FlareStore + Feather 修正版：\n移除會與單一 App ID 憑證衝突的 PlugIns 子套件，並採用無透明通道標準 @2x/@3x/1024px 圖示，100% 解決「無法完成安裝」與空白圖示問題！\n內建：iOS 27 FoundationModels + Vision 班表多圖辨識、EventKit 一鍵直接同步 iPhone 原生行事曆雙鬧鐘、Time-Sensitive 起床鬧鐘、月底對帳單高清長圖匯出。",
       "versions": [
         {
-          "version": "3.0.1",
-          "buildVersion": "301",
+          "version": "3.0.2",
+          "buildVersion": "302",
           "date": "2026-11-01",
-          "localizedDescription": "v3.0.1：修復 FlareStore 單一 App ID 憑證下 PlugIns 導致無法完成安裝與桌面圖示空白問題。",
+          "localizedDescription": "v3.0.2：專為單一 App ID 付費憑證優化 entitlements 與無透明通道標準桌面圖示，解決無法完成安裝與空白圖示問題。",
           "downloadURL": "https://github.com/mrhaibaoseal-lang/shift-pay-app/releases/download/latest-feather/ShiftPay-iOS27-Feather.ipa",
           "size": 1800000
         }

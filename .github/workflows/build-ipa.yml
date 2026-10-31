@@ -117,13 +117,17 @@ jobs:
       - name: Package Standard Feather IPA (Single-Bundle Guaranteed Install) & Widget IPA
         run: |
           APP_PATH=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "ShiftPay.app" | head -n 1)
+          cp ios/ShiftPayApp/Assets.xcassets/AppIcon.appiconset/AppIcon-180.png "$APP_PATH/icon.png" 2>/dev/null || true
 
+          # 1. 含 Widget 擴充版 (ShiftPay-iOS27-WithWidget.ipa)
           rm -rf Payload
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           zip -qry ShiftPay-iOS27-WithWidget.ipa Payload
 
+          # 2. 標準保證安裝版 (ShiftPay-iOS27-Feather.ipa) - 移除 PlugIns 子套件並預簽入乾淨權限
           rm -rf Payload/ShiftPay.app/PlugIns
+          codesign --force --sign - --entitlements ios/ShiftPayApp/ShiftPay.entitlements Payload/ShiftPay.app
           zip -qry ShiftPay-iOS27-Feather.ipa Payload
           ls -lh ShiftPay-iOS27-Feather.ipa ShiftPay-iOS27-WithWidget.ipa
 
