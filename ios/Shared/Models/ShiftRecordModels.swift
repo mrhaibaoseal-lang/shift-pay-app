@@ -25,10 +25,24 @@ public struct ShiftStamp: Codable, Identifiable, Equatable, Sendable {
     }
 
     public static let defaultStamps: [ShiftStamp] = [
-        ShiftStamp(id: "s1", name: "早班", start: "09:00", end: "17:00", breakMin: 0, color: "#0A84FF"),
-        ShiftStamp(id: "s2", name: "晚班", start: "18:00", end: "22:00", breakMin: 0, color: "#BF5AF2"),
-        ShiftStamp(id: "s3", name: "假日班", start: "10:00", end: "19:00", breakMin: 60, color: "#FF9F0A")
+        ShiftStamp(id: "s1", name: "整天班", start: "10:30", end: "21:00", breakMin: 120, color: "#FF9F0A"),
+        ShiftStamp(id: "s2", name: "晚班(平日)", start: "16:30", end: "21:00", breakMin: 0, color: "#BF5AF2"),
+        ShiftStamp(id: "s3", name: "晚班(假日)", start: "17:00", end: "21:00", breakMin: 0, color: "#FF375F"),
+        ShiftStamp(id: "s4", name: "早班(平日)", start: "10:30", end: "14:30", breakMin: 0, color: "#0A84FF"),
+        ShiftStamp(id: "s5", name: "早班(假日)", start: "10:30", end: "15:00", breakMin: 0, color: "#64D2FF")
     ]
+
+    public static func isLegacyDefaultStamps(_ stamps: [ShiftStamp]) -> Bool {
+        if stamps.count == 3 {
+            return stamps[0].start == "09:00" && stamps[0].end == "17:00" &&
+                   stamps[1].start == "18:00" && stamps[1].end == "22:00" &&
+                   stamps[2].start == "10:00" && stamps[2].end == "19:00"
+        }
+        if stamps.count == 5 && stamps[2].name == "晚班(假日)" && stamps[2].start == "17:30" {
+            return true
+        }
+        return false
+    }
 }
 
 public struct ShiftRecord: Codable, Equatable, Sendable {
@@ -108,7 +122,8 @@ public struct ShiftPayState: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.settings = try c.decodeIfPresent(PayrollSettings.self, forKey: .settings) ?? PayrollSettings()
-        self.stamps = try c.decodeIfPresent([ShiftStamp].self, forKey: .stamps) ?? ShiftStamp.defaultStamps
+        let decodedStamps = try c.decodeIfPresent([ShiftStamp].self, forKey: .stamps) ?? ShiftStamp.defaultStamps
+        self.stamps = (decodedStamps.isEmpty || ShiftStamp.isLegacyDefaultStamps(decodedStamps)) ? ShiftStamp.defaultStamps : decodedStamps
         self.shifts = try c.decodeIfPresent([String: ShiftRecord].self, forKey: .shifts) ?? [:]
     }
 }

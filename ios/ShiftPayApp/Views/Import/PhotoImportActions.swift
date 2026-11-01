@@ -33,10 +33,18 @@ extension PhotoImportSheet {
                         .submitLabel(.done)
                         .font(.system(size: 12, design: .monospaced))
                         .frame(width: 52)
+                    if row.breakMin > 0 {
+                        Text("休\(row.breakMin / 60)h")
+                            .font(.system(size: 10, weight: .bold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.22), in: Capsule())
+                            .foregroundStyle(Color(hex: "#FF9F0A"))
+                    }
                     Spacer()
-                    Text(row.note)
+                    Text(row.shiftLabel.isEmpty ? row.note : "\(row.shiftLabel)・\(row.note)")
                         .font(.system(size: 10))
-                        .foregroundStyle(row.needsReview ? Color(hex: "#FFD60A") : .white.opacity(0.45))
+                        .foregroundStyle(row.needsReview ? Color(hex: "#FFD60A") : .white.opacity(0.6))
                         .lineLimit(1)
                 }
                 .padding(8)
@@ -105,12 +113,15 @@ extension PhotoImportSheet {
         for r in picked {
             let matchedStamp = vm.state.stamps.first { $0.start == r.startTime && $0.end == r.endTime }
             let prev = vm.state.shifts[r.date]
+            let isFullDayShift = (r.startTime == "10:30" && r.endTime == "21:00")
+            let resolvedBreak = r.breakMin > 0 ? r.breakMin : (matchedStamp?.breakMin ?? (isFullDayShift ? 120 : defaultBreakMin))
+            let resolvedName = matchedStamp?.name ?? (!r.shiftLabel.isEmpty ? r.shiftLabel : (isFullDayShift ? "整天班" : "匯入班"))
             vm.state.shifts[r.date] = ShiftRecord(
-                name: matchedStamp?.name ?? "匯入班",
-                color: matchedStamp?.color ?? "#64D2FF",
+                name: resolvedName,
+                color: matchedStamp?.color ?? (isFullDayShift ? "#FF9F0A" : "#64D2FF"),
                 start: r.startTime,
                 end: r.endTime,
-                breakMin: matchedStamp?.breakMin ?? defaultBreakMin,
+                breakMin: resolvedBreak,
                 stampId: matchedStamp?.id,
                 otMin: prev?.otMin ?? 0,
                 status: prev?.status ?? .normal,

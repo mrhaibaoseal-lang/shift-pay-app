@@ -101,29 +101,56 @@ public final class DynamicProfileScheduleAgent {
             stamps: stamps
         )
 
-        // Stage 1: DynamicProfile [LocatorProfile] -> 呼叫內建 Vision OCRTool 定位表格列與姓名
-        onStageChanged("🔍 DynamicProfile [1/2]：正在執行 Apple Vision OCRTool 空間表格對齊，尋找「\(settings.myName)」…")
-        let ocrResult = await VisionOCRTool.scanScheduleTables(images: images, targetName: settings.myName)
+        // Stage 1: DynamicProfile [LocatorProfile] -> 呼叫內建 Vision OCRTool 定位 7 欄月曆格與姓名
+        onStageChanged("🔍 DynamicProfile [1/2]：正在執行 Apple Vision 7 欄月曆格對齊，尋找「\(settings.myName)」…")
+        let ocrResult = await VisionOCRTool.scanScheduleTables(
+            images: images,
+            targetName: settings.myName,
+            year: year,
+            month: month
+        )
 
         // Stage 2: DynamicProfile [ExtractionProfile] -> 動態切換至目標 LanguageModel
         let activeModel: any ShiftLanguageModel
+        let isClaudeModelName = settings.aiModel.lowercased().contains("claude")
         switch settings.aiProvider {
         case .appleFoundation:
             activeModel = AppleFoundationLanguageModel()
         case .gemini:
-            activeModel = GeminiLanguageModel(modelName: settings.aiModel, apiKey: settings.apiKey)
+            activeModel = GeminiLanguageModel(
+                modelName: isClaudeModelName ? ShiftPayConstants.defaultAIModel : settings.aiModel,
+                apiKey: settings.apiKey
+            )
         case .claude:
-            activeModel = ClaudeLanguageModel(modelName: settings.aiModel, apiKey: settings.claudeApiKey.isEmpty ? settings.apiKey : settings.claudeApiKey)
+            activeModel = ClaudeLanguageModel(
+                modelName: isClaudeModelName ? settings.aiModel : ShiftPayConstants.defaultClaudeModel,
+                apiKey: settings.claudeApiKey.isEmpty ? settings.apiKey : settings.claudeApiKey
+            )
         case .hybridDynamic:
-            // 若已設定 Gemini API Key，自動結合 Vision OCR 定位 + Gemini 多模態視覺；否則自動切換為 Apple 內建 Foundation Models
+            // 若已設定 API Key，自動結合 Vision 月曆定位 + 雲端多模態視覺；否則自動切換為 Apple 內建 Foundation Models
             if !settings.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                activeModel = GeminiLanguageModel(modelName: settings.aiModel, apiKey: settings.apiKey)
+                if isClaudeModelName {
+                    activeModel = ClaudeLanguageModel(modelName: settings.aiModel, apiKey: settings.apiKey)
+                } else {
+                    activeModel = GeminiLanguageModel(modelName: settings.aiModel, apiKey: settings.apiKey)
+                }
             } else {
                 activeModel = AppleFoundationLanguageModel()
             }
         }
 
         onStageChanged("🧠 DynamicProfile [2/2]：已切換至 \(activeModel.displayName)，正在跨頁合併 \(images.count) 張班表…")
-        return try await activeModel.extractShifts(images: images, ocrContext: ocrResult, context: context)
+        do {
+            let rows = try await activeModel.extractShifts(images: images, ocrContext: ocrResult, context: context)
+            if !rows.isEmpty { return rows }
+        } catch {
+            // 若雲端模型失敗但 Vision 月曆格已有辨識結果，自動降級回傳 Vision 結果
+            if let fallbackRows = try? await AppleFoundationLanguageModel().extractShifts(images: images, ocrContext: ocrResult, context: context),
+               !fallbackRows.isEmpty {
+                return fallbackRows
+            }
+            throw error
+        }
+        return try await AppleFoundationLanguageModel().extractShifts(images: images, ocrContext: ocrResult, context: context)
     }
 }

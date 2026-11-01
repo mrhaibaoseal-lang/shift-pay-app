@@ -58,10 +58,15 @@ extension SettingsTabView {
                     .onChange(of: vm.state.settings.aiModel) { _, _ in vm.save() }
 
                 HStack(spacing: 6) {
-                    ForEach(["gemini-3.8-flash", "gemini-2.5-flash", "claude-sonnet-4-6"], id: \.self) { preset in
+                    ForEach(["gemini-3.8-flash", "gemini-3.8-flash-preview", "claude-sonnet-4-6"], id: \.self) { preset in
                         Button {
                             KeyboardDismissManager.dismiss()
                             vm.state.settings.aiModel = preset
+                            if preset.contains("claude") {
+                                vm.state.settings.aiProvider = .claude
+                            } else if vm.state.settings.aiProvider == .claude {
+                                vm.state.settings.aiProvider = .hybridDynamic
+                            }
                             vm.save()
                         } label: {
                             Text(preset)

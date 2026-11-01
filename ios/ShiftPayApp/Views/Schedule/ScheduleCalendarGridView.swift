@@ -15,8 +15,11 @@ extension ScheduleTabView {
             day: cal.component(.day, from: now)
         )
 
+        let leadingSlots = (0..<firstWeekday).map { "empty-\(vm.viewYear)-\(vm.viewMonth)-\($0)" }
+        let dayNumbers = Array(1...daysCount)
+
         return VStack(spacing: 8) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 7), spacing: 5) {
+            HStack(spacing: 5) {
                 ForEach(0..<7, id: \.self) { idx in
                     Text(ShiftPayConstants.weekDays[idx])
                         .font(.system(size: 11, weight: .semibold))
@@ -24,18 +27,21 @@ extension ScheduleTabView {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
                 }
+            }
 
-                ForEach(0..<firstWeekday, id: \.self) { _ in
-                    Color.clear.frame(height: 68)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 7), spacing: 5) {
+                ForEach(leadingSlots, id: \.self) { slotId in
+                    Color.clear.frame(height: 68).id(slotId)
                 }
 
-                ForEach(1...daysCount, id: \.self) { day in
+                ForEach(dayNumbers, id: \.self) { day in
                     let key = PayrollEngine.dateKey(year: vm.viewYear, month: vm.viewMonth, day: day)
                     let shift = vm.state.shifts[key]
                     let weekday = (firstWeekday + day - 1) % 7
                     calendarDayCell(day: day, dateKey: key, weekday: weekday, shift: shift, isToday: key == todayKey)
                 }
             }
+            .id("\(vm.viewYear)-\(vm.viewMonth)")
 
             HStack {
                 Text("💡 左右滑動月曆可切換月份 · 點擊日期可微調時間、休息或記錄加班")

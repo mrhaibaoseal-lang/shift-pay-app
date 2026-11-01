@@ -26,7 +26,7 @@ public struct PayrollSettings: Codable, Equatable, Sendable {
         aiProvider: AIProviderTier = .hybridDynamic,
         aiModel: String = ShiftPayConstants.defaultAIModel,
         aiModelCustom: Bool? = true,
-        codeHints: String = "",
+        codeHints: String = ShiftPayConstants.defaultCodeHints,
         customBreaks: [Int] = [],
         reminders: ReminderSettings = ReminderSettings()
     ) {
@@ -65,7 +65,8 @@ public struct PayrollSettings: Codable, Equatable, Sendable {
         let rawModel = try c.decodeIfPresent(String.self, forKey: .aiModel) ?? ShiftPayConstants.defaultAIModel
         self.aiModel = (rawModel.isEmpty || rawModel == "gemini-2.5-flash") ? ShiftPayConstants.defaultAIModel : rawModel
         self.aiModelCustom = try c.decodeIfPresent(Bool.self, forKey: .aiModelCustom)
-        self.codeHints = try c.decodeIfPresent(String.self, forKey: .codeHints) ?? ""
+        let rawHints = (try c.decodeIfPresent(String.self, forKey: .codeHints) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        self.codeHints = rawHints.isEmpty ? ShiftPayConstants.defaultCodeHints : rawHints
         let rawBreaks = try c.decodeIfPresent([Int].self, forKey: .customBreaks) ?? []
         self.customBreaks = Array(Set(rawBreaks.filter { $0 > 0 && $0 <= 720 })).sorted()
         self.reminders = try c.decodeIfPresent(ReminderSettings.self, forKey: .reminders) ?? ReminderSettings()

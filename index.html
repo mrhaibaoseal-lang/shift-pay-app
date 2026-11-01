@@ -850,6 +850,7 @@ const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 const PALETTE = ['#0A84FF', '#BF5AF2', '#FF9F0A', '#30D158', '#FF453A', '#FF375F', '#64D2FF', '#FFD60A', '#AC8E68', '#8E8E93'];
 const DEFAULT_AI_MODEL = 'gemini-3.8-flash';
 const DEFAULT_BREAK_MINS = [0, 30, 60, 90, 120]; // 不扣除, 0.5h, 1h, 1.5h, 2h
+const DEFAULT_CODE_HINTS = '月曆格內只要有「弘」字即為要上班（多人連寫如「弘鈞整」「李弘整」「呈弘整」「UD弘整」「弘李整」「鈞弘整」皆代表弘上整天班；「弘晚」代表弘上晚班；注意區分「怡」與「弘」，如「怡晚」「怡語晚」「怡呈晚」是同事怡的班，不是弘）。早=早班（平日10:30-14:30、假日10:30-15:00）；晚=晚班（平日16:30-21:00、假日17:00-21:00）；整=整天班（10:30-21:00，中間休息2小時/120分鐘）';
 
 const DEFAULT_STATE = () => ({
   settings: {
@@ -860,7 +861,7 @@ const DEFAULT_STATE = () => ({
     myName: '王凱弘',
     apiKey: '',
     aiModel: DEFAULT_AI_MODEL,
-    codeHints: '',
+    codeHints: DEFAULT_CODE_HINTS,
     customBreaks: [],          // 使用者自訂常駐休息分鐘數，例如 [45, 150]
     reminders: {
       prevDayEnabled: true,
@@ -870,12 +871,24 @@ const DEFAULT_STATE = () => ({
     }
   },
   stamps: [
-    { id: 's1', name: '早班',   start: '09:00', end: '17:00', breakMin: 0,  color: '#0A84FF' },
-    { id: 's2', name: '晚班',   start: '18:00', end: '22:00', breakMin: 0,  color: '#BF5AF2' },
-    { id: 's3', name: '假日班', start: '10:00', end: '19:00', breakMin: 60, color: '#FF9F0A' }
+    { id: 's1', name: '整天班',     start: '10:30', end: '21:00', breakMin: 120, color: '#FF9F0A' },
+    { id: 's2', name: '晚班(平日)', start: '16:30', end: '21:00', breakMin: 0,   color: '#BF5AF2' },
+    { id: 's3', name: '晚班(假日)', start: '17:00', end: '21:00', breakMin: 0,   color: '#FF375F' },
+    { id: 's4', name: '早班(平日)', start: '10:30', end: '14:30', breakMin: 0,   color: '#0A84FF' },
+    { id: 's5', name: '早班(假日)', start: '10:30', end: '15:00', breakMin: 0,   color: '#64D2FF' }
   ],
   shifts: {} // 'YYYY-MM-DD': { name,color,start,end,breakMin,stampId,otMin,status,leaveType,note }
 });
+
+function isLegacyStamps(stamps) {
+  if (!Array.isArray(stamps)) return true;
+  if (stamps.length === 3 &&
+      stamps[0]?.start === '09:00' && stamps[0]?.end === '17:00' &&
+      stamps[1]?.start === '18:00' && stamps[1]?.end === '22:00' &&
+      stamps[2]?.start === '10:00' && stamps[2]?.end === '19:00') return true;
+  if (stamps.length === 5 && stamps[2]?.name === '晚班(假日)' && stamps[2]?.start === '17:30') return true;
+  return false;
+}
 
 function loadState() {
   try {
@@ -886,6 +899,7 @@ function loadState() {
     const mergedSettings = {
       ...d.settings,
       ...(s.settings || {}),
+      codeHints: (s.settings?.codeHints || '').trim() || DEFAULT_CODE_HINTS,
       customBreaks: Array.isArray(s.settings?.customBreaks)
         ? s.settings.customBreaks.map(Number).filter(n => n > 0 && isFinite(n))
         : [],
@@ -900,7 +914,7 @@ function loadState() {
     }
     return {
       settings: mergedSettings,
-      stamps: Array.isArray(s.stamps) ? s.stamps : d.stamps,
+      stamps: (Array.isArray(s.stamps) && s.stamps.length > 0 && !isLegacyStamps(s.stamps)) ? s.stamps : d.stamps,
       shifts: (s.shifts && typeof s.shifts === 'object') ? s.shifts : {}
     };
   } catch (e) {
@@ -2612,27 +2626,60 @@ function buildPrompt(y, m, imgCount = 1) {
   const s = state.settings;
   const dim = new Date(y, m, 0).getDate();
   const firstWd = WEEK[new Date(y, m - 1, 1).getDay()];
-  return `你是一位專精辨識「餐飲/零售店主管手寫排班表」的資料擷取助理。
+  const short1 = (s.myName || '王凱弘').slice(-1) || '弘';
+  const dayGuide = [];
+  for (let d = 1; d <= dim; d++) {
+    const wdIdx = new Date(y, m - 1, d).getDay();
+    const isWeekend = (wdIdx === 0 || wdIdx === 6);
+    dayGuide.push(`${d}號(週${WEEK[wdIdx]}・${isWeekend ? '假日' : '平日'})`);
+  }
+  return `你是一位專精辨識台灣門市「手寫月曆格排班表」與「多人連寫代號班表」的頂尖視覺擷取專家。
 
-【多圖跨頁合併核心指令】
-使用者上傳了多張手寫班表照片（目前共 ${Math.max(1, imgCount)} 張），這些是同一個月份不同頁數（例如上半月與下半月、或不同週次）的班表。請綜合讀取所有照片，找出姓名為『${s.myName}』在每一頁中的所有排班，將所有日期的班表**合併、去除重複日期、並按照日期先後順序（1號到月底）由小到大排序**後，統一回傳成一個完整的 JSON 陣列。
+【核心任務】
+使用者上傳了 ${Math.max(1, imgCount)} 張排班表照片，請找出姓名為『${s.myName}』（在班表上一律簡寫為單字『${short1}』）在 **${y} 年 ${m} 月** 的所有排班，合併去重並依日期由小到大排序後回傳 JSON 陣列。
 
-【辨識細節規則】
-1. 表格中通常有多位同事。請只鎖定姓名為「${s.myName}」的那一列（或那一欄）。姓名可能被簡寫成名字、單字或暱稱（例如「${s.myName.slice(-2)}」「${s.myName.slice(-1)}」），請依合理性判斷，不要誤抓其他人的班。
-2. 這份班表是 ${y} 年 ${m} 月（共 ${dim} 天，${m} 月 1 日是星期${firstWd}）。請把每一格對應到正確日期，輸出格式為 YYYY-MM-DD。若表格只寫日期數字或星期，請依此月曆推算。
-3. 將手寫時間轉換為標準 24 小時制 "HH:MM"，例如：
-   - "18-22" → startTime "18:00"、endTime "22:00"
-   - "9-5" 或 "9~5" → "09:00"-"17:00"（下班數字小於上班數字時，通常代表下午）
-   - "10半-7" 或 "10:30-7" → "10:30"-"19:00"
-   - "5-12" 晚班若明顯是晚上 → "17:00"-"00:00"
-4. 休假、空白、畫斜線「/」、打「X」、寫「休」「off」「例」「休假」的日期，請不要輸出。
-5. note 欄位請填入該格手寫的原始字樣（例如 "18-22"、"早"、"晚"）；若字跡不確定，請給出最可能的結果並在 note 末尾加上 "(?)"。
-6. 店家手寫代號對照（請優先遵守）：${s.codeHints ? s.codeHints : '（無特別說明，請依常理判斷）'}
+【⚠️ 極重要：這份手寫排班表的版面與多人連寫規則（必讀）】
+1. **7 欄式月曆方格結構（星期一～星期日）**：
+   - 表格上方標題欄由左至右依序為：\`星期一 | 星期二 | 星期三 | 星期四 | 星期五 | 星期六 | 星期日\`。
+   - 每一個方格代表一天，方格左上角有手寫阿拉伯數字代表幾號（例如 4、7、8、11、14、15、16、17、21、24、26、28）。
+   - 注意：最後一列右下角若寫 \`11/1\` 代表跨下個月 1 號，請勿混入上個月。請務必用「所在的星期幾欄位」與下方【當月平假日月曆對照表】雙重驗證日期！
+2. **多人共用班別尾字寫法（最關鍵規則！）**：
+   - 店內同事簡稱包含：\`${short1}\`（目標本人）、\`李\`、\`鈞\`、\`語\`、\`怡\`、\`呈\`、\`雲\`、\`UD\`。
+   - 店長習慣把「同一天上同種班別的多位同事名字」連在一起寫在班別代號（\`整\`、\`晚\`、\`早\`、\`休\`）前面：
+     * 方格上半部通常寫 **整天班（整）** 或早班（早）：只要該串名字包含「${short1}」且結尾是「整」（例如 \`${short1}整\`、\`${short1}鈞整\`、\`鈞${short1}整\`、\`李${short1}整\`、\`呈${short1}整\`、\`UD${short1}整\`、\`${short1}李整\`）👉 全部代表 **「${short1}」當天上「整」班（10:30-21:00，休120分）**！
+     * 方格下半部通常寫 **晚班（晚）** 或休假（休）：只要該串名字包含「${short1}」且結尾是「晚」（例如 \`${short1}晚\`、\`雲休 ${short1}晚\`）👉 代表 **「${short1}」當天上「晚」班**！
+     * **嚴格排除他人排班（特別注意「怡」與「${short1}」的區別！）**：
+       - 店內有另一位常上晚班的同事叫「**怡**」（左邊是直豎「忄」，右邊是「台」，下方有一個方框「口」）。
+       - 「**${short1}**」左邊是彎弓「弓」，右邊**只有單一個「厶」，下方絕對沒有「口」**！
+       - 因此像 \`怡晚\`、\`怡語晚\`（例如 10/3、10/16 格內寫的是「怡語晚」，不是弘！）、\`怡呈晚\`、\`語怡晚\`、\`怡整\` 全部是同事「怡」的班，絕對不要算進「${short1}」的班表！
+3. **手寫字跡辨識訣竅**：
+   - 手寫的「${short1}」（左弓右厶，下方無口）連寫時常看起來像 \`34\`、\`引\`、\`孔\`（尤其在日期 4、11、14、26 號下方，如 \`4 弘鈞整\`、\`14 弘鈞整\`），請特別留意不要漏抓！
+   - 手寫的「整」連筆時下半部常像「聖」或「壓」。
+
+【⏰ 班別代號（早 / 晚 / 整）平假日時間與休息換算表】
+- **早（早班）**：平日（週一～週五）\`10:30\`-\`14:30\` (breakMin:0)；假日（週六、週日）\`10:30\`-\`15:00\` (breakMin:0)
+- **晚（晚班）**：平日（週一～週五）\`16:30\`-\`21:00\` (breakMin:0)；假日（週六、週日）\`17:00\`-\`21:00\` (breakMin:0)
+- **整（整天班）**：平假日皆為 \`10:30\`-\`21:00\`，中間休息 2 小時 (\`breakMin: 120\`)
+- 補充規則：${s.codeHints || DEFAULT_CODE_HINTS}
+
+【📅 ${y} 年 ${m} 月 每日平假日對照表（共 ${dim} 天，${m}/1 是星期${firstWd}）】
+${dayGuide.join('、')}
+
+【🎯 真實班表辨識標準範例（Few-Shot）】
+- 2026 年 11 月班表（上半月 4 天）：
+  * 11/4(三)「4 弘鈞整」→ {"date":"2026-11-04","shiftType":"整","startTime":"10:30","endTime":"21:00","breakMin":120,"note":"弘鈞整"}
+  * 11/8(日)「8 李弘整」→ {"date":"2026-11-08","shiftType":"整","startTime":"10:30","endTime":"21:00","breakMin":120,"note":"李弘整"}
+  * 11/11(三)「11 弘鈞整」→ {"date":"2026-11-11","shiftType":"整","startTime":"10:30","endTime":"21:00","breakMin":120,"note":"弘鈞整"}
+  * 11/15(日)「15 呈弘整」→ {"date":"2026-11-15","shiftType":"整","startTime":"10:30","endTime":"21:00","breakMin":120,"note":"呈弘整"}
+- 2026 年 10 月班表（整月 8 天；注意 10/16 寫的是「怡語晚」故無班）：
+  * 10/7(三)「弘整」、10/11(日)「李弘整」、10/14(三)「弘鈞整」→ 皆為 10:30-21:00 (整, breakMin:120)
+  * 10/17(六)「UD弘整」、10/21(三)「弘整」→ 皆為 10:30-21:00 (整, breakMin:120)
+  * 10/24(六・假日)「呈鈞整 / 雲休 弘晚」→ 17:00-21:00 (晚, breakMin:0)
+  * 10/26(一)「弘李整」、10/28(三)「鈞弘整」→ 皆為 10:30-21:00 (整, breakMin:120)
 
 【輸出規則】
 - 只輸出純 JSON 陣列，不要任何說明文字、不要 markdown 程式碼框。
-- 格式：[{"date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","note":"手寫原字樣"}]
-- 必須去除重複日期，並依日期（1號到月底）由小到大排序。若所有照片中都找不到「${s.myName}」，請輸出 []。`;
+- 格式：[{"date":"YYYY-MM-DD","shiftType":"整|晚|早","startTime":"HH:MM","endTime":"HH:MM","breakMin":120,"note":"手寫原字樣"}]`;
 }
 
 function renderImpBreakSelect() {
@@ -2833,17 +2880,74 @@ function normDate(v, y, m) {
 }
 function rowValid(r) { return isValidDate(r.date) && /^\d{2}:\d{2}$/.test(r.startTime) && /^\d{2}:\d{2}$/.test(r.endTime); }
 
+function resolveShiftCodeWeb(codeOrNote, dateKey) {
+  if (!isValidDate(dateKey)) return null;
+  const wd = weekdayOf(dateKey);
+  const isWeekend = (wd === 0 || wd === 6);
+  const s = String(codeOrNote || '');
+  if (s.includes('整') || s.includes('全')) {
+    return { startTime: '10:30', endTime: '21:00', breakMin: 120, shiftLabel: '整天班' };
+  }
+  if (s.includes('晚')) {
+    return { startTime: isWeekend ? '17:00' : '16:30', endTime: '21:00', breakMin: 0, shiftLabel: isWeekend ? '晚班(假日)' : '晚班(平日)' };
+  }
+  if (s.includes('早')) {
+    return { startTime: '10:30', endTime: isWeekend ? '15:00' : '14:30', breakMin: 0, shiftLabel: isWeekend ? '早班(假日)' : '早班(平日)' };
+  }
+  return null;
+}
+
+function parseShorthandWeb(text, y, m) {
+  const re = /(?:(\d{1,2})\s*[/月.\-]\s*)?(\d{1,2})\s*(?:日|號)?\s*([^\d\n,，、;；]{0,8}?[整晚早全])/g;
+  const out = [];
+  let match;
+  while ((match = re.exec(String(text || ''))) !== null) {
+    if (match[1] && Number(match[1]) !== m) continue;
+    const d = Number(match[2]);
+    const token = match[3].trim();
+    const dateKey = dkey(y, m, d);
+    if (!isValidDate(dateKey)) continue;
+    const resolved = resolveShiftCodeWeb(token, dateKey);
+    if (resolved) {
+      out.push({
+        date: dateKey,
+        shiftType: token,
+        startTime: resolved.startTime,
+        endTime: resolved.endTime,
+        breakMin: resolved.breakMin,
+        note: token
+      });
+    }
+  }
+  return out;
+}
+
 function loadImportRows(arr) {
   const { y, m } = impYM();
   const rawRows = arr.map(it => {
     const o = (it && typeof it === 'object') ? it : {};
     const rawDate = o.date ?? o.day ?? '';
+    const date = normDate(rawDate, y, m);
+    const note = String(o.note ?? o.raw ?? o.original ?? '').slice(0, 40);
+    const codeHint = `${o.shiftType || ''} ${o.shift || ''} ${note}`;
+    let startTime = normTime(o.startTime ?? o.start ?? o.begin);
+    let endTime = normTime(o.endTime ?? o.end ?? o.finish);
+    let breakMin = typeof o.breakMin === 'number' ? o.breakMin : null;
+    const resolved = resolveShiftCodeWeb(codeHint, date);
+    if (resolved) {
+      startTime = resolved.startTime;
+      endTime = resolved.endTime;
+      if (breakMin == null) breakMin = resolved.breakMin;
+    } else if (startTime === '10:30' && endTime === '21:00' && breakMin == null) {
+      breakMin = 120;
+    }
     const r = {
-      date: normDate(rawDate, y, m),
+      date,
       rawDate: String(rawDate),
-      startTime: normTime(o.startTime ?? o.start ?? o.begin),
-      endTime: normTime(o.endTime ?? o.end ?? o.finish),
-      note: String(o.note ?? o.raw ?? o.original ?? '').slice(0, 40)
+      startTime,
+      endTime,
+      breakMin,
+      note
     };
     r.checked = rowValid(r);
     return r;
@@ -2959,25 +3063,17 @@ $('#btnRecognize').addEventListener('click', async () => {
       contents: [{ role: 'user', parts }],
       generationConfig: {
         temperature: 0.1,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: 'ARRAY',
-          items: {
-            type: 'OBJECT',
-            properties: {
-              date: { type: 'STRING' },
-              startTime: { type: 'STRING' },
-              endTime: { type: 'STRING' },
-              note: { type: 'STRING' }
-            },
-            required: ['date', 'startTime', 'endTime']
-          }
-        }
+        responseMimeType: 'application/json'
       }
     };
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(key)}`;
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json().catch(() => ({}));
+    const candidates = [modelName, 'gemini-3.8-flash', 'gemini-3.8-flash-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash'].filter((v, i, a) => v && a.indexOf(v) === i);
+    let res = null, data = {};
+    for (const candidate of candidates) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidate)}:generateContent?key=${encodeURIComponent(key)}`;
+      res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      data = await res.json().catch(() => ({}));
+      if (res.ok || res.status !== 404) break;
+    }
     if (!res.ok) {
       const msg = data?.error?.message || `HTTP ${res.status}`;
       if (res.status === 400 && /API key/i.test(msg)) throw new Error('API Key 無效，請到設定確認');
@@ -2986,12 +3082,18 @@ $('#btnRecognize').addEventListener('click', async () => {
       throw new Error(msg);
     }
     const resParts = data?.candidates?.[0]?.content?.parts || [];
-    const text = resParts.filter(p => !p.thought).map(p => p.text || '').join('');
+    const nonThought = resParts.filter(p => !p.thought).map(p => p.text || '').join('');
+    const text = nonThought || resParts.map(p => p.text || '').join('');
     if (!text) {
       const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || '未知原因';
       throw new Error(`AI 沒有回傳內容（${reason}）`);
     }
-    const arr = extractArray(parseLooseJSON(text));
+    let arr = [];
+    try {
+      arr = extractArray(parseLooseJSON(text));
+    } catch (_) {
+      arr = parseShorthandWeb(text, y, m);
+    }
     if (!arr.length) {
       $('#impStatus').innerHTML = `<div class="rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-amber-200">🤔 AI 沒有在照片中找到「${esc(state.settings.myName)}」的排班。請確認設定中的姓名與班表上的寫法一致，或換更清晰的照片。</div>`;
       importRows = []; renderImportRows();
@@ -3016,10 +3118,16 @@ $('#btnCopyPrompt').addEventListener('click', async () => {
 });
 $('#btnParseJson').addEventListener('click', () => {
   const t = $('#impJson').value.trim();
-  if (!t) return toast('請先貼上 JSON', 'error');
+  if (!t) return toast('請先貼上 JSON 或簡寫代號（如 4整 8整 11整 15整）', 'error');
   try {
-    const arr = extractArray(parseLooseJSON(t));
-    if (!arr.length) return toast('JSON 陣列是空的', 'error');
+    const { y, m } = impYM();
+    let arr = [];
+    try {
+      arr = extractArray(parseLooseJSON(t));
+    } catch (_) {
+      arr = parseShorthandWeb(t, y, m);
+    }
+    if (!arr.length) return toast('找不到可解析的班表，可輸入如「4整 8整 11整 15整」', 'error');
     loadImportRows(arr);
     toast(`解析成功，合併共 ${importRows.length} 筆，請核對`, 'success');
   } catch (err) { toast(err.message, 'error'); }
@@ -3049,12 +3157,16 @@ $('#btnImportConfirm').addEventListener('click', () => {
   picked.forEach(r => {
     const st = state.stamps.find(s => s.start === r.startTime && s.end === r.endTime);
     const prev = state.shifts[r.date] || {};
+    const isFullDay = (r.startTime === '10:30' && r.endTime === '21:00');
+    const finalBreak = (typeof r.breakMin === 'number' && r.breakMin > 0)
+      ? r.breakMin
+      : (st ? (Number(st.breakMin) || 0) : (isFullDay ? 120 : brkDefault));
     state.shifts[r.date] = {
-      name: st ? st.name : '匯入班',
-      color: st ? st.color : '#64D2FF',
+      name: st ? st.name : (isFullDay ? '整天班' : '匯入班'),
+      color: st ? st.color : (isFullDay ? '#FF9F0A' : '#64D2FF'),
       start: r.startTime,
       end: r.endTime,
-      breakMin: st ? (Number(st.breakMin) || 0) : brkDefault,
+      breakMin: finalBreak,
       stampId: st ? st.id : null,
       otMin: prev.otMin || 0,
       status: prev.status || 'normal',

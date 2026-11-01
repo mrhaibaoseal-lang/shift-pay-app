@@ -7,6 +7,7 @@ public enum ShiftPayConstants {
     public static let defaultClaudeModel = "claude-sonnet-4-6"
     public static let defaultBreakMins: [Int] = [0, 30, 60, 90, 120]
     public static let weekDays: [String] = ["日", "一", "二", "三", "四", "五", "六"]
+    public static let defaultCodeHints = "月曆格內只要有「弘」字即為要上班（多人連寫如「弘鈞整」「李弘整」「呈弘整」「UD弘整」「弘李整」「鈞弘整」皆代表弘上整天班；「弘晚」代表弘上晚班；注意區分「怡」與「弘」，如「怡晚」「怡語晚」「怡呈晚」是同事怡的班，不是弘）。早=早班（平日10:30-14:30、假日10:30-15:00）；晚=晚班（平日16:30-21:00、假日17:00-21:00）；整=整天班（10:30-21:00，中間休息2小時/120分鐘）"
     public static let palette: [String] = [
         "#0A84FF", "#BF5AF2", "#FF9F0A", "#30D158", "#FF453A",
         "#FF375F", "#64D2FF", "#FFD60A", "#AC8E68", "#8E8E93"

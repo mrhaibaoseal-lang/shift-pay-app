@@ -46,61 +46,66 @@ public struct GeminiLanguageModel: ShiftLanguageModel {
             "contents": [["role": "user", "parts": parts]],
             "generationConfig": [
                 "temperature": 0.1,
-                "responseMimeType": "application/json",
-                "responseSchema": [
-                    "type": "ARRAY",
-                    "items": [
-                        "type": "OBJECT",
-                        "properties": [
-                            "date": ["type": "STRING"],
-                            "startTime": ["type": "STRING"],
-                            "endTime": ["type": "STRING"],
-                            "note": ["type": "STRING"]
-                        ],
-                        "required": ["date", "startTime", "endTime"]
-                    ]
-                ]
+                "responseMimeType": "application/json"
             ]
         ]
 
-        let encodedModel = modelIdentifier.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? modelIdentifier
-        let encodedKey = apiKey.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? apiKey
-        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(encodedModel):generateContent?key=\(encodedKey)") else {
-            throw NSError(domain: "GeminiLanguageModel", code: 400, userInfo: [NSLocalizedDescriptionKey: "API 網址格式錯誤"])
+        // 優先呼叫使用者指定的模型 (預設 gemini-3.8-flash)；若端點回傳 404 則自動嘗試相容後綴
+        var candidateModels = [modelIdentifier]
+        for fallback in ["gemini-3.8-flash", "gemini-3.8-flash-preview", "gemini-3-flash-preview", "gemini-2.5-flash"] {
+            if !candidateModels.contains(fallback) {
+                candidateModels.append(fallback)
+            }
         }
 
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.timeoutInterval = 60
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let encodedKey = apiKey.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? apiKey
+        var lastErrorMsg = "未知錯誤"
+        var lastStatus = 500
 
-        let (data, response) = try await URLSession.shared.data(for: req)
-        let httpStatus = (response as? HTTPURLResponse)?.statusCode ?? 500
+        for candidate in candidateModels {
+            let encodedModel = candidate.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? candidate
+            guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(encodedModel):generateContent?key=\(encodedKey)") else {
+                continue
+            }
 
-        if !(200...299).contains(httpStatus) {
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.timeoutInterval = 60
+            req.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+            let (data, response) = try await URLSession.shared.data(for: req)
+            let httpStatus = (response as? HTTPURLResponse)?.statusCode ?? 500
+            lastStatus = httpStatus
+
+            if (200...299).contains(httpStatus) {
+                guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let candidates = root["candidates"] as? [[String: Any]],
+                      let firstContent = candidates.first?["content"] as? [String: Any],
+                      let resParts = firstContent["parts"] as? [[String: Any]] else {
+                    throw NSError(domain: "Gemini", code: 500, userInfo: [NSLocalizedDescriptionKey: "AI 沒有回傳有效內容"])
+                }
+
+                let nonThought = resParts.compactMap { part -> String? in
+                    if (part["thought"] as? Bool) == true { return nil }
+                    return part["text"] as? String
+                }.joined()
+                let text = nonThought.isEmpty ? resParts.compactMap { $0["text"] as? String }.joined() : nonThought
+
+                return try ScheduleJSONParser.parseRows(from: text, year: context.year, month: context.month)
+            }
+
             let errJson = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])
             let errObj = errJson?["error"] as? [String: Any]
-            let msg = (errObj?["message"] as? String) ?? "HTTP \(httpStatus)"
-            if httpStatus == 404 {
-                throw NSError(domain: "Gemini", code: 404, userInfo: [NSLocalizedDescriptionKey: "找不到模型「\(modelIdentifier)」，可至「設定 → AI 模型名稱」切換為 gemini-2.5-flash 或最新模型"])
+            lastErrorMsg = (errObj?["message"] as? String) ?? "HTTP \(httpStatus)"
+
+            // 若非 404 (例如 API Key 錯誤 400/403 或 429)，不需繼續嘗試其他模型名稱
+            if httpStatus != 404 {
+                break
             }
-            throw NSError(domain: "Gemini", code: httpStatus, userInfo: [NSLocalizedDescriptionKey: msg])
         }
 
-        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let candidates = root["candidates"] as? [[String: Any]],
-              let firstContent = candidates.first?["content"] as? [String: Any],
-              let resParts = firstContent["parts"] as? [[String: Any]] else {
-            throw NSError(domain: "Gemini", code: 500, userInfo: [NSLocalizedDescriptionKey: "AI 沒有回傳有效內容"])
-        }
-
-        let text = resParts.compactMap { part -> String? in
-            if (part["thought"] as? Bool) == true { return nil }
-            return part["text"] as? String
-        }.joined()
-
-        return try ScheduleJSONParser.parseRows(from: text, year: context.year, month: context.month)
+        throw NSError(domain: "Gemini", code: lastStatus, userInfo: [NSLocalizedDescriptionKey: lastErrorMsg])
     }
 
     private func compressImage(_ image: UIImage, maxDim: CGFloat, quality: CGFloat) -> Data? {

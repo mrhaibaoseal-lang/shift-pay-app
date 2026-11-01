@@ -91,6 +91,42 @@ extension PhotoImportSheet {
                     .foregroundStyle(.white)
             }
 
+            Text("💡 支援貼上 AI 回傳 JSON，或直接輸入簡寫（如：4弘鈞整 8李弘整 11弘鈞整 15呈弘整）")
+                .font(.system(size: 11))
+                .foregroundStyle(.white.opacity(0.6))
+
+            HStack(spacing: 8) {
+                Button {
+                    targetYear = 2026
+                    targetMonth = 11
+                    manualJSONText = "4弘鈞整 8李弘整 11弘鈞整 15呈弘整"
+                    extractedRows = (try? ScheduleJSONParser.parseRows(from: manualJSONText, year: 2026, month: 11)) ?? []
+                    statusText = "✅ 已載入 2026 年 11 月班表練習範本（共 \(extractedRows.count) 筆整天班，自動扣休 2 小時）"
+                } label: {
+                    Text("⚡ 載入11月班表(4天)")
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.purple.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(Color(hex: "#BF5AF2"))
+                }
+
+                Button {
+                    targetYear = 2026
+                    targetMonth = 10
+                    manualJSONText = "7弘整 11李弘整 14弘鈞整 17UD弘整 21弘整 24弘晚 26弘李整 28鈞弘整"
+                    extractedRows = (try? ScheduleJSONParser.parseRows(from: manualJSONText, year: 2026, month: 10)) ?? []
+                    statusText = "✅ 已載入 2026 年 10 月班表練習範本（共 \(extractedRows.count) 筆，自動區分假日晚班 17:00-21:00 與整班休2h）"
+                } label: {
+                    Text("⚡ 載入10月班表(8天)")
+                        .font(.system(size: 11, weight: .bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.orange.opacity(0.25), in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(Color(hex: "#FF9F0A"))
+                }
+            }
+
             TextEditor(text: $manualJSONText)
                 .font(.system(size: 12, design: .monospaced))
                 .frame(height: 110)
@@ -101,12 +137,12 @@ extension PhotoImportSheet {
                 KeyboardDismissManager.dismiss()
                 do {
                     extractedRows = try ScheduleJSONParser.parseRows(from: manualJSONText, year: targetYear, month: targetMonth)
-                    statusText = "✅ 解析成功，共 \(extractedRows.count) 筆排班，請於下方核對。"
+                    statusText = "✅ 解析成功，共 \(extractedRows.count) 筆排班（已自動套用早/晚/整平假日時間與休息規則），請於下方核對。"
                 } catch {
-                    vm.showToast("JSON 解析失敗：\(error.localizedDescription)", style: .error)
+                    vm.showToast("解析失敗：\(error.localizedDescription)", style: .error)
                 }
             } label: {
-                Text("解析 JSON 並預覽")
+                Text("解析 JSON / 簡寫代號並預覽")
                     .font(.system(size: 13, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 11)

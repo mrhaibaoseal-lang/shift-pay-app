@@ -53,6 +53,31 @@ public struct AppleFoundationLanguageModel: ShiftLanguageModel {
     #endif
 
     private func parseFromVisionOCR(ocr: VisionTableOCRResult, context: ScheduleExtractionContext) -> [ExtractedShiftRow] {
+        var byDate: [String: ExtractedShiftRow] = [:]
+
+        // 1. 優先從 7 欄式月曆方格 (星期一~星期日) 掃描「弘 + 早/晚/整」代號
+        for cell in ocr.calendarCells {
+            guard let shiftCode = cell.detectedShiftCode else { continue }
+            let dateKey = PayrollEngine.dateKey(year: context.year, month: context.month, day: cell.day)
+            if let resolved = ScheduleJSONParser.resolveShiftCode(codeOrNote: shiftCode, dateKey: dateKey) {
+                byDate[dateKey] = ExtractedShiftRow(
+                    date: dateKey,
+                    startTime: resolved.startTime,
+                    endTime: resolved.endTime,
+                    breakMin: resolved.breakMin,
+                    shiftLabel: resolved.shiftLabel,
+                    note: cell.normalizedCellText,
+                    checked: true,
+                    needsReview: false
+                )
+            }
+        }
+
+        if !byDate.isEmpty {
+            return byDate.values.sorted { $0.date < $1.date }
+        }
+
+        // 2. 若非月曆代號表，回退掃描數字時間段 (如 10:30-21:00)
         let sourceLines = ocr.matchedEmployeeRowTexts.isEmpty
             ? ocr.fullRecognizedText.components(separatedBy: .newlines)
             : ocr.matchedEmployeeRowTexts
@@ -71,11 +96,14 @@ public struct AppleFoundationLanguageModel: ShiftLanguageModel {
                 let rawToken = nsLine.substring(with: m.range)
                 if let (st, et) = ScheduleJSONParser.normalizeHandwrittenTimeRange(rawToken) {
                     let dateStr = PayrollEngine.dateKey(year: context.year, month: context.month, day: dayCursor)
+                    let brk = (st == "10:30" && et == "21:00") ? 120 : 0
                     results.append(
                         ExtractedShiftRow(
                             date: dateStr,
                             startTime: st,
                             endTime: et,
+                            breakMin: brk,
+                            shiftLabel: brk == 120 ? "整天班" : "",
                             note: "Vision: \(rawToken)",
                             checked: true,
                             needsReview: rawToken.contains("?")

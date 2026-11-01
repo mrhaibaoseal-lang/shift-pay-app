@@ -79,6 +79,8 @@ public struct ExtractedShiftRow: Codable, Identifiable, Equatable, Sendable {
     public var date: String
     public var startTime: String
     public var endTime: String
+    public var breakMin: Int
+    public var shiftLabel: String
     public var note: String
     public var checked: Bool
     public var needsReview: Bool
@@ -88,6 +90,8 @@ public struct ExtractedShiftRow: Codable, Identifiable, Equatable, Sendable {
         date: String,
         startTime: String,
         endTime: String,
+        breakMin: Int = 0,
+        shiftLabel: String = "",
         note: String = "",
         checked: Bool = true,
         needsReview: Bool = false
@@ -96,6 +100,8 @@ public struct ExtractedShiftRow: Codable, Identifiable, Equatable, Sendable {
         self.date = date
         self.startTime = startTime
         self.endTime = endTime
+        self.breakMin = breakMin
+        self.shiftLabel = shiftLabel
         self.note = note
         self.checked = checked
         self.needsReview = needsReview
