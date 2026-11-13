@@ -62,12 +62,22 @@ public final class AlarmNotificationService: NSObject, UNUserNotificationCenterD
             _ = await requestPermission()
             status = await checkAuthorizationStatus()
         }
-        guard status == .authorized || status == .provisional else { return 0 }
-
-        center.removeAllPendingNotificationRequests()
+        let notificationsAllowed = status == .authorized || status == .provisional
 
         let rem = state.settings.reminders
-        guard rem.prevDayEnabled || rem.wakeEnabled else { return 0 }
+        // iOS 26+：起床鬧鐘改用 AlarmKit 原生系統鬧鐘（無視靜音／專注模式、全螢幕響鈴）
+        let useNativeAlarms = await NativeWakeAlarmService.shared.requestAuthorization()
+        var nativeRequests: [NativeWakeAlarmService.WakeAlarmRequest] = []
+        let offsets = NativeWakeAlarmService.ringOffsets(gapMinutes: rem.wakeAlarmGapMin)
+
+        if notificationsAllowed {
+            center.removeAllPendingNotificationRequests()
+        }
+        guard rem.prevDayEnabled || rem.wakeEnabled else {
+            if useNativeAlarms { await NativeWakeAlarmService.shared.replaceAll(with: []) }
+            return 0
+        }
+        guard notificationsAllowed || useNativeAlarms else { return 0 }
 
         let cal = Calendar(identifier: .gregorian)
         let now = Date()
@@ -90,7 +100,7 @@ public final class AlarmNotificationService: NSObject, UNUserNotificationCenterD
             let wakeHHMM = PayrollEngine.calculateWakeTime(shiftStart: sh.start, leadMinutes: leadMin)
 
             // 1. 前一晚提醒
-            if rem.prevDayEnabled,
+            if rem.prevDayEnabled, notificationsAllowed,
                let prevDayDate = cal.date(byAdding: .day, value: -1, to: shiftDate) {
                 var prevComp = cal.dateComponents([.year, .month, .day], from: prevDayDate)
                 prevComp.hour = prevHour
@@ -112,7 +122,7 @@ public final class AlarmNotificationService: NSObject, UNUserNotificationCenterD
                 }
             }
 
-            // 2. 當日起床連環鬧鐘（T+0m, T+1m, T+3m, T+5m 連響四次防睡過頭）
+            // 2. 當日起床鬧鐘 ×3（T、T+gap、T+2·gap）
             if rem.wakeEnabled {
                 let wParts = wakeHHMM.split(separator: ":").compactMap { Int($0) }
                 if wParts.count == 2 {
@@ -121,12 +131,21 @@ public final class AlarmNotificationService: NSObject, UNUserNotificationCenterD
                     wakeComp.minute = wParts[1]
                     if let baseWakeDate = cal.date(from: wakeComp) {
                         var addedWake = false
-                        for (idx, addMin) in [0, 1, 3, 5].enumerated() {
+                        for (idx, addMin) in offsets.enumerated() {
                             guard let ringDate = cal.date(byAdding: .minute, value: addMin, to: baseWakeDate),
                                   ringDate > now else { continue }
+                            let title = idx == 0
+                                ? "⏰ 起床！\(sh.name) \(sh.start) 上班"
+                                : "🚨 第 \(idx + 1)/\(offsets.count) 個起床鬧鐘・\(sh.name) \(sh.start)"
+                            if useNativeAlarms {
+                                nativeRequests.append(.init(fireDate: ringDate, title: title))
+                                addedWake = true
+                                continue
+                            }
+                            guard notificationsAllowed else { continue }
                             let rComp = cal.dateComponents([.year, .month, .day, .hour, .minute], from: ringDate)
                             let content = UNMutableNotificationContent()
-                            content.title = idx == 0 ? "⏰ 起床鬧鐘 (\(wakeHHMM))・\(sh.name)" : "🚨 起床鬧鐘第 \(idx + 1) 次連響！(\(sh.name))"
+                            content.title = title
                             content.body = "今日班表 \(sh.start)-\(sh.end)，準備起床出發！（長按可點「我已起床」停止後續連響）"
                             content.sound = .defaultCritical
                             content.interruptionLevel = .timeSensitive
@@ -146,10 +165,15 @@ public final class AlarmNotificationService: NSObject, UNUserNotificationCenterD
                 }
             }
         }
+
+        if useNativeAlarms {
+            await NativeWakeAlarmService.shared.replaceAll(with: nativeRequests)
+        }
         return scheduledCount
     }
 
-    public func sendImmediateTestNotification(state: ShiftPayState) async {
+    @discardableResult
+    public func sendImmediateTestNotification(state: ShiftPayState) async -> Bool {
         let up = PayrollEngine.upcomingSchedule(state: state)
         let body: String
         if let tmr = up.tomorrowShift {
@@ -159,6 +183,12 @@ public final class AlarmNotificationService: NSObject, UNUserNotificationCenterD
             body = "下一班 \(nx.month)/\(nx.day) \(sh.start)-\(sh.end)（\(sh.name)）｜建議起床：\(wake)"
         } else {
             body = "目前尚無近期排班，iOS 原生高優先級鬧鐘通知運作正常！"
+        }
+
+        // iOS 26+：直接排一個 5 秒後響起的原生系統鬧鐘
+        if await NativeWakeAlarmService.shared.requestAuthorization(),
+           await NativeWakeAlarmService.shared.schedule(fireDate: Date().addingTimeInterval(5), title: "⏰ 打工薪水帳・起床鬧鐘測試") {
+            return true
         }
 
         let content = UNMutableNotificationContent()
@@ -171,6 +201,7 @@ public final class AlarmNotificationService: NSObject, UNUserNotificationCenterD
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1.2, repeats: false)
         let req = UNNotificationRequest(identifier: "shiftpay.test.\(UUID().uuidString)", content: content, trigger: trigger)
         try? await UNUserNotificationCenter.current().add(req)
+        return false
     }
 
     public func openSystemClockApp(state: ShiftPayState? = nil) -> String? {
@@ -211,7 +242,9 @@ public final class AlarmNotificationService: NSObject, UNUserNotificationCenterD
         let dateKey = userInfo["dateKey"] as? String ?? ""
 
         if response.actionIdentifier == Self.stopActionId, !dateKey.isEmpty {
-            let ids = [0, 1, 3, 5].map { "shiftpay.wake.\(dateKey).\($0)" }
+            let ids = (0..<NativeWakeAlarmService.alarmsPerShift).flatMap { idx in
+                (1...30).map { gap in "shiftpay.wake.\(dateKey).\(idx * gap)" }
+            }
             center.removePendingNotificationRequests(withIdentifiers: ids)
             center.removeDeliveredNotifications(withIdentifiers: ids)
         } else if response.actionIdentifier == Self.snoozeActionId {

@@ -12,10 +12,10 @@
       "localizedDescription": "V3.0.1 專為 FlareStore + Feather 修正版：\n移除會與單一 App ID 憑證衝突的 PlugIns 子套件，並採用無透明通道標準 @2x/@3x/1024px 圖示，100% 解決「無法完成安裝」與空白圖示問題！\n內建：iOS 27 FoundationModels + Vision 班表多圖辨識、EventKit 一鍵直接同步 iPhone 原生行事曆雙鬧鐘、Time-Sensitive 起床鬧鐘、月底對帳單高清長圖匯出。",
       "versions": [
         {
-          "version": "3.0.5",
-          "buildVersion": "305",
-          "date": "2026-11-01",
-          "localizedDescription": "v3.0.5：修復月曆 1～6 號消失問題；針對 7 欄式手寫月曆格與多人連寫代號（弘鈞整/李弘整/弘晚，嚴格排除怡語晚）深度調校 AI 與 Vision 辨識；內建早/晚/整平假日時間（假日晚班 17:00-21:00）與整天班自動扣休 2 小時。",
+          "version": "3.0.6",
+          "buildVersion": "306",
+          "date": "2026-11-14",
+          "localizedDescription": "v3.0.6：起床鬧鐘改用 iOS 26+ AlarmKit 原生系統鬧鐘（全螢幕響鈴、無視靜音與專注模式），每班連響 3 個鬧鐘，間隔可選 3/5/10 分鐘；修正舊版通知超過 64 則上限導致後面幾天鬧鐘不見的問題。",
           "downloadURL": "https://github.com/mrhaibaoseal-lang/shift-pay-app/releases/download/latest-feather/ShiftPay-iOS27-Feather.ipa",
           "size": 1800000
         }
@@ -31,7 +31,7 @@
         {
           "version": "3.0.1",
           "buildVersion": "301",
-          "date": "2026-11-01",
+          "date": "2026-11-14",
           "localizedDescription": "v3.0.1：補齊 ShiftPayWidgetExtension Info.plist NSExtension 字典與標準桌面圖示。",
           "downloadURL": "https://github.com/mrhaibaoseal-lang/shift-pay-app/releases/download/latest-feather/ShiftPay-iOS27-WithWidget.ipa",
           "size": 2400000

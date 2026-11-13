@@ -119,6 +119,8 @@ public struct ReminderSettings: Codable, Equatable, Sendable {
     public var wakeLeadMin: Int
     public var autoSyncCalendar: Bool
     public var autoScheduleNotifications: Bool
+    /// 三個起床鬧鐘之間的間隔（分鐘）
+    public var wakeAlarmGapMin: Int
 
     public init(
         prevDayEnabled: Bool = true,
@@ -126,7 +128,8 @@ public struct ReminderSettings: Codable, Equatable, Sendable {
         wakeEnabled: Bool = true,
         wakeLeadMin: Int = 90,
         autoSyncCalendar: Bool = false,
-        autoScheduleNotifications: Bool = true
+        autoScheduleNotifications: Bool = true,
+        wakeAlarmGapMin: Int = 5
     ) {
         self.prevDayEnabled = prevDayEnabled
         self.prevDayTime = prevDayTime
@@ -134,11 +137,12 @@ public struct ReminderSettings: Codable, Equatable, Sendable {
         self.wakeLeadMin = wakeLeadMin
         self.autoSyncCalendar = autoSyncCalendar
         self.autoScheduleNotifications = autoScheduleNotifications
+        self.wakeAlarmGapMin = wakeAlarmGapMin
     }
 
     enum CodingKeys: String, CodingKey {
         case prevDayEnabled, prevDayTime, wakeEnabled, wakeLeadMin
-        case autoSyncCalendar, autoScheduleNotifications
+        case autoSyncCalendar, autoScheduleNotifications, wakeAlarmGapMin
     }
 
     public init(from decoder: Decoder) throws {
@@ -150,5 +154,7 @@ public struct ReminderSettings: Codable, Equatable, Sendable {
         self.wakeLeadMin = max(5, min(720, rawLead))
         self.autoSyncCalendar = try c.decodeIfPresent(Bool.self, forKey: .autoSyncCalendar) ?? false
         self.autoScheduleNotifications = try c.decodeIfPresent(Bool.self, forKey: .autoScheduleNotifications) ?? true
+        let rawGap = try c.decodeIfPresent(Int.self, forKey: .wakeAlarmGapMin) ?? 5
+        self.wakeAlarmGapMin = max(1, min(30, rawGap))
     }
 }

@@ -11,8 +11,8 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     SWIFT_STRICT_CONCURRENCY: minimal
-    MARKETING_VERSION: "3.0.5"
-    CURRENT_PROJECT_VERSION: "305"
+    MARKETING_VERSION: "3.0.6"
+    CURRENT_PROJECT_VERSION: "306"
     TARGETED_DEVICE_FAMILY: "1"
     INFOPLIST_KEY_CFBundleDisplayName: "打工薪水帳"
     CODE_SIGN_IDENTITY: ""
@@ -39,6 +39,7 @@ targets:
         NSCameraUsageDescription: "打工薪水帳需要相機權限，以便直接拍攝店內手寫排班表進行 AI 智慧辨識。"
         NSPhotoLibraryUsageDescription: "打工薪水帳需要相簿權限，以便選取多張手寫排班表照片進行跨頁 AI 合併辨識，以及儲存月底高清對帳單圖片。"
         NSPhotoLibraryAddUsageDescription: "打工薪水帳需要相簿權限，以便將月底薪資核對單圖片儲存至您的手機相簿。"
+        NSAlarmKitUsageDescription: "打工薪水帳需要鬧鐘權限，才能依班表自動設定 iPhone 原生起床鬧鐘（每班 3 個，無視靜音模式）。"
         NSSupportsLiveActivities: true
     settings:
       base:

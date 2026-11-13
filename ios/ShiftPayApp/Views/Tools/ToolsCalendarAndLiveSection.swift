@@ -7,23 +7,24 @@ extension ToolsTabView {
             Button {
                 Task {
                     let granted = await AlarmNotificationService.shared.requestPermission()
-                    if granted {
+                    let nativeOK = await NativeWakeAlarmService.shared.requestAuthorization()
+                    if granted || nativeOK {
                         let count = await AlarmNotificationService.shared.syncUpcomingNotifications(state: vm.state)
                         HapticsManager.shared.success()
                         if count > 0 {
-                            vm.showToast("⏰ 已同步未來 \(count) 天排班至 iPhone 原生連環起床鬧鐘！", style: .success)
+                            vm.showToast("⏰ 已設定未來 \(count) 天的原生起床鬧鐘（每班 \(NativeWakeAlarmService.alarmsPerShift) 個）！", style: .success)
                         } else {
                             vm.showToast("⏰ 已啟用原生鬧鐘自動排程（目前近期尚無待響班表）", style: .success)
                         }
                     } else {
                         HapticsManager.shared.warning()
-                        vm.showToast("請於「系統設定 → 通知」開啟打工薪水帳通知權限", style: .warning)
+                        vm.showToast("請於「系統設定 → 打工薪水帳」開啟鬧鐘與通知權限", style: .warning)
                     }
                 }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "alarm.waves.left.and.right.fill")
-                    Text("一鍵同步排班至 iPhone 原生起床鬧鐘（連環響鈴）")
+                    Text("一鍵設定原生起床鬧鐘（每班 \(NativeWakeAlarmService.alarmsPerShift) 個）")
                 }
                 .font(.system(size: 13, weight: .heavy))
                 .frame(maxWidth: .infinity)
@@ -39,13 +40,14 @@ extension ToolsTabView {
                 Button {
                     Task {
                         let granted = await AlarmNotificationService.shared.requestPermission()
-                        if granted {
+                        let nativeOK = await NativeWakeAlarmService.shared.requestAuthorization()
+                        if granted || nativeOK {
                             _ = await AlarmNotificationService.shared.syncUpcomingNotifications(state: vm.state)
-                            await AlarmNotificationService.shared.sendImmediateTestNotification(state: vm.state)
+                            let native = await AlarmNotificationService.shared.sendImmediateTestNotification(state: vm.state)
                             HapticsManager.shared.success()
-                            vm.showToast("🔔 已發送原生起床鬧鐘測試（1 秒後響起，長按可關閉或貪睡）！", style: .success)
+                            vm.showToast(native ? "⏰ 原生鬧鐘將於 5 秒後響起（可鎖定螢幕測試）！" : "🔔 已發送鬧鐘通知測試（1 秒後響起）", style: .success)
                         } else {
-                            vm.showToast("請於系統設定開啟通知權限", style: .warning)
+                            vm.showToast("請於系統設定開啟鬧鐘與通知權限", style: .warning)
                         }
                     }
                 } label: {

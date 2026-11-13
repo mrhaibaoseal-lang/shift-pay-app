@@ -89,7 +89,7 @@ struct ToolsTabView: View {
             )) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("☀️ 上班當日起床鬧鐘").font(.system(size: 14, weight: .bold))
-                    Text("依當日表定上班時間自動往回推算起床時間")
+                    Text("依上班時間往回推算，連響 \(NativeWakeAlarmService.alarmsPerShift) 個系統鬧鐘（無視靜音）")
                         .font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
                 }
             }
@@ -132,6 +132,29 @@ struct ToolsTabView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.55))
                 Spacer()
+            }
+
+            HStack(spacing: 6) {
+                Text("3 個鬧鐘間隔")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.white.opacity(0.55))
+                ForEach([3, 5, 10], id: \.self) { gap in
+                    let active = (vm.state.settings.reminders.wakeAlarmGapMin == gap)
+                    Button {
+                        vm.state.settings.reminders.wakeAlarmGapMin = gap
+                        HapticsManager.shared.lightTap()
+                        vm.save()
+                        let times = NativeWakeAlarmService.ringOffsets(gapMinutes: gap).map { "+\($0)" }.joined(separator: " / ")
+                        vm.showToast("起床鬧鐘：\(times) 分鐘各響一次", style: .success)
+                    } label: {
+                        Text("\(gap) 分")
+                            .font(.system(size: 12, weight: .bold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(active ? Color(hex: "#FF9F0A") : .white.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                            .foregroundStyle(active ? .black : .white)
+                    }
+                }
             }
 
             calendarAndNotificationButtons
