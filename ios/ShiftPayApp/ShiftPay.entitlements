@@ -6,6 +6,10 @@
     <false/>
     <key>com.apple.developer.usernotifications.time-sensitive</key>
     <true/>
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.81c139ae9a27a7f8.1</string>
+    </array>
 </dict>
 </plist>
 

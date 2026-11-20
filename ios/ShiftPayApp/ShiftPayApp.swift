@@ -71,6 +71,7 @@ struct MainRootView: View {
         }
         .dismissKeyboardOnTap()
         .onAppear {
+            SharedStore.shared.mirrorStateToAppGroup(vm.state)
             AlarmNotificationService.shared.configureNotificationCategories()
             if vm.state.settings.reminders.autoScheduleNotifications {
                 Task {

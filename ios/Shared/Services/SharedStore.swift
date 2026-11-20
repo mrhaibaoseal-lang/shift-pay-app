@@ -9,7 +9,10 @@ public final class SharedStore: @unchecked Sendable {
     internal let stateAccountKey = "shiftpay.v3.fullstate"
     internal let widgetAccountKey = "shiftpay.v3.widgetpayload"
     internal let keychainService = "com.mrhaibaoseal.shiftpay.shared"
+    /// FlareStore 憑證只開放 group.81c139ae9a27a7f8.1～5，放最前面才寫得進去；
+    /// 練壯（workout）也從這裡讀班表來排運動時間。
     internal let candidateAppGroups = [
+        "group.81c139ae9a27a7f8.1",
         "group.com.mrhaibaoseal.shiftpay",
         "group.com.shiftpay.shared"
     ]
@@ -57,6 +60,14 @@ public final class SharedStore: @unchecked Sendable {
             }
         }
         reloadAllWidgets()
+    }
+
+    /// 把目前的班表寫一份到 App Group，讓其他 App（練壯）讀得到。
+    /// 只寫 shiftpay_state.json，不動本機存檔與 Keychain。
+    public func mirrorStateToAppGroup(_ state: ShiftPayState) {
+        guard let groupURL = activeAppGroupURL()?.appendingPathComponent("shiftpay_state.json"),
+              let data = try? JSONEncoder().encode(state) else { return }
+        try? data.write(to: groupURL, options: .atomic)
     }
 
     public func loadWidgetPayload() -> WidgetSyncPayload {

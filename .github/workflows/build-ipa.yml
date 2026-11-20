@@ -157,8 +157,8 @@ jobs:
           gh release create latest-feather \
             ShiftPay-iOS27-Feather.ipa \
             ShiftPay-iOS27-WithWidget.ipa \
-            --title "打工薪水帳 V3.0.6 (iOS 27 原生版 - AlarmKit 原生三連鬧鐘)" \
-            --notes "v3.0.6：起床鬧鐘改用 iOS 26+ AlarmKit 原生系統鬧鐘（全螢幕響鈴、無視靜音與專注模式），每班連響 3 個鬧鐘，間隔可選 3/5/10 分鐘；修正舊版通知超過 64 則上限導致後面幾天鬧鐘不見的問題。"
+            --title "打工薪水帳 V3.0.7 (iOS 27 原生版)" \
+            --notes "v3.0.7：班表同步寫入 FlareStore 憑證的 App Group，讓「練壯」可以讀取班表自動排運動時間。其他功能不變。"
 
       - name: Publish to private Feather source
         uses: mrhaibaoseal-lang/feather-source@main
